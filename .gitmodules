@@ -1,0 +1,18 @@
+[submodule "web"]
+	path = web
+	url = https://github.com/trento-project/web.git
+[submodule "wanda"]
+	path = wanda
+	url = https://github.com/trento-project/wanda.git
+[submodule "agent"]
+	path = agent
+	url = https://github.com/trento-project/agent.git
+[submodule "checks"]
+	path = checks
+	url = https://github.com/trento-project/checks.git
+[submodule "contracts"]
+	path = contracts
+	url = https://github.com/trento-project/contracts.git
+[submodule "helm-charts"]
+	path = helm-charts
+	url = git@github.com:trento-project/helm-charts.git

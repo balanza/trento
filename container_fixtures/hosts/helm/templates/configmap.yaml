@@ -1,0 +1,20 @@
+{{- /*
+One ConfigMap per host. Mounted as /etc/trento/agent.yaml inside the agent
+container — overrides the image-baked /usr/etc/trento/agent.yaml because the
+agent looks at /etc/trento/ first.
+*/}}
+{{- range .Values.hosts }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "host-fixtures.hostName" (dict "Release" $.Release "host" .name) }}
+  labels:
+    {{- include "host-fixtures.labels" $ | nindent 4 }}
+    fixture/host: {{ .name | quote }}
+data:
+  agent.yaml: |
+    server-url: {{ $.Values.trento.serverUrl }}
+    api-key: {{ $.Values.trento.apiKey }}
+    facts-service-url: {{ $.Values.trento.factsServiceUrl }}
+{{- end }}

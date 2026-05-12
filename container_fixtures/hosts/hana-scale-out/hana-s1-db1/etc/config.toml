@@ -1,0 +1,397 @@
+# Cloud detection: respond as Azure.
+# The agent calls /usr/sbin/dmidecode (full path); the dmidecode shim under
+# /usr/sbin and /usr/bin both forward to fakemall and resolve via these entries.
+[[commands]]
+matches = "dmidecode -s chassis-asset-tag"
+output = "7783-7084-3265-9085-8269-3286-77"
+
+[[commands]]
+matches = "dmidecode -s system-manufacturer"
+output = "Microsoft Corporation"
+
+[[commands]]
+matches = "dmidecode -s bios-vendor"
+output = "Microsoft Corporation"
+
+[[commands]]
+matches = "dmidecode -s system-version"
+output = "Hyper-V UEFI Release v4.1"
+
+[[commands]]
+matches = "dmidecode"
+output = "Microsoft Corporation"
+
+# SAP profile parameter dump used by sap-system discovery
+[[commands]]
+matches = "sappfpar SAPSYSTEMNAME SAPGLOBALHOST SAPFQDN SAPDBHOST dbs/hdb/dbname dbs/hdb/schema rdisp/msp/msserv rdisp/msserv_internal name=MCK"
+output = """
+SAPSYSTEMNAME=HN2
+SAPGLOBALHOST=hana-s1-db1
+SAPFQDN=
+SAPDBHOST=hana-s1-db1
+dbs/hdb/dbname=HN2
+dbs/hdb/schema=SAPHANADB
+"""
+
+# Cluster live state (crm_mon -X --inactive). Identical across all 3 host fixtures.
+# Topology: hana-s1-db1 (id=1, S1, master/DC), hana-s2-db1 (id=3, S2, slave),
+#           hana-s-mm (id=5, majority maker, no SAP resources).
+[[commands]]
+matches = "crm_mon -X --inactive"
+output = """
+<?xml version=\"1.0\"?>
+<crm_mon version=\"2.1.5+20221208.a3f44794f-150500.6.14.4\">
+    <summary>
+        <stack type=\"corosync\"/>
+        <current_dc present=\"true\" version=\"2.1.5+20221208.a3f44794f-150500.6.14.4-2.1.5+20221208.a3f44794f\" name=\"hana-s1-db1\" id=\"1\" with_quorum=\"true\"/>
+        <last_update time=\"Fri Apr 17 09:52:40 2026\"/>
+        <last_change time=\"Fri Apr 17 09:52:36 2026\" user=\"root\" client=\"crm_attribute\" origin=\"hana-s1-db1\"/>
+        <nodes_configured number=\"3\"/>
+        <resources_configured number=\"11\" disabled=\"0\" blocked=\"0\"/>
+        <cluster_options stonith-enabled=\"true\" symmetric-cluster=\"true\" no-quorum-policy=\"stop\" maintenance-mode=\"false\"/>
+    </summary>
+    <nodes>
+        <node name=\"hana-s-mm\"   id=\"5\" online=\"true\" standby=\"false\" standby_onfail=\"false\" maintenance=\"false\" pending=\"false\" unclean=\"false\" shutdown=\"false\" expected_up=\"true\" is_dc=\"false\" resources_running=\"0\" type=\"member\"/>
+        <node name=\"hana-s1-db1\" id=\"1\" online=\"true\" standby=\"false\" standby_onfail=\"false\" maintenance=\"false\" pending=\"false\" unclean=\"false\" shutdown=\"false\" expected_up=\"true\" is_dc=\"true\"  resources_running=\"5\" type=\"member\"/>
+        <node name=\"hana-s2-db1\" id=\"3\" online=\"true\" standby=\"false\" standby_onfail=\"false\" maintenance=\"false\" pending=\"false\" unclean=\"false\" shutdown=\"false\" expected_up=\"true\" is_dc=\"false\" resources_running=\"3\" type=\"member\"/>
+    </nodes>
+    <resources>
+        <clone id=\"cln_fs_HN2_HDB04_fscheck\" multi_state=\"false\" unique=\"false\" managed=\"true\" failed=\"false\" failure_ignored=\"false\">
+            <resource id=\"fs_HN2_HDB04_fscheck\" resource_agent=\"ocf::heartbeat:Filesystem\" role=\"Started\" active=\"true\"  orphaned=\"false\" blocked=\"false\" managed=\"true\" failed=\"false\" failure_ignored=\"false\" nodes_running_on=\"1\">
+                <node name=\"hana-s1-db1\" id=\"1\" cached=\"true\"/>
+            </resource>
+            <resource id=\"fs_HN2_HDB04_fscheck\" resource_agent=\"ocf::heartbeat:Filesystem\" role=\"Started\" active=\"true\"  orphaned=\"false\" blocked=\"false\" managed=\"true\" failed=\"false\" failure_ignored=\"false\" nodes_running_on=\"1\">
+                <node name=\"hana-s2-db1\" id=\"3\" cached=\"true\"/>
+            </resource>
+            <resource id=\"fs_HN2_HDB04_fscheck\" resource_agent=\"ocf::heartbeat:Filesystem\" role=\"Stopped\" active=\"false\" orphaned=\"false\" blocked=\"false\" managed=\"true\" failed=\"false\" failure_ignored=\"false\" nodes_running_on=\"0\"/>
+        </clone>
+        <clone id=\"cln_SAPHanaTopology_HN2_HDB04\" multi_state=\"false\" unique=\"false\" managed=\"true\" failed=\"false\" failure_ignored=\"false\">
+            <resource id=\"rsc_SAPHanaTopology_HN2_HDB04\" resource_agent=\"ocf::suse:SAPHanaTopology\" role=\"Started\" active=\"true\"  orphaned=\"false\" blocked=\"false\" managed=\"true\" failed=\"false\" failure_ignored=\"false\" nodes_running_on=\"1\">
+                <node name=\"hana-s1-db1\" id=\"1\" cached=\"true\"/>
+            </resource>
+            <resource id=\"rsc_SAPHanaTopology_HN2_HDB04\" resource_agent=\"ocf::suse:SAPHanaTopology\" role=\"Started\" active=\"true\"  orphaned=\"false\" blocked=\"false\" managed=\"true\" failed=\"false\" failure_ignored=\"false\" nodes_running_on=\"1\">
+                <node name=\"hana-s2-db1\" id=\"3\" cached=\"true\"/>
+            </resource>
+            <resource id=\"rsc_SAPHanaTopology_HN2_HDB04\" resource_agent=\"ocf::suse:SAPHanaTopology\" role=\"Stopped\" active=\"false\" orphaned=\"false\" blocked=\"false\" managed=\"true\" failed=\"false\" failure_ignored=\"false\" nodes_running_on=\"0\"/>
+        </clone>
+        <clone id=\"msl_SAPHana_HN2_HDB04\" multi_state=\"true\" unique=\"false\" managed=\"true\" failed=\"false\" failure_ignored=\"false\">
+            <resource id=\"rsc_SAPHana_HN2_HDB04\" resource_agent=\"ocf::suse:SAPHanaController\" role=\"Master\" active=\"true\"  orphaned=\"false\" blocked=\"false\" managed=\"true\" failed=\"false\" failure_ignored=\"false\" nodes_running_on=\"1\">
+                <node name=\"hana-s1-db1\" id=\"1\" cached=\"true\"/>
+            </resource>
+            <resource id=\"rsc_SAPHana_HN2_HDB04\" resource_agent=\"ocf::suse:SAPHanaController\" role=\"Slave\"  active=\"true\"  orphaned=\"false\" blocked=\"false\" managed=\"true\" failed=\"false\" failure_ignored=\"false\" nodes_running_on=\"1\">
+                <node name=\"hana-s2-db1\" id=\"3\" cached=\"true\"/>
+            </resource>
+            <resource id=\"rsc_SAPHana_HN2_HDB04\" resource_agent=\"ocf::suse:SAPHanaController\" role=\"Stopped\" active=\"false\" orphaned=\"false\" blocked=\"false\" managed=\"true\" failed=\"false\" failure_ignored=\"false\" nodes_running_on=\"0\"/>
+        </clone>
+        <group id=\"g_ip_HN2_HDB04\" number_resources=\"2\">
+            <resource id=\"rsc_ip_HN2_HDB04\" resource_agent=\"ocf::heartbeat:IPaddr2\" role=\"Started\" active=\"true\" orphaned=\"false\" blocked=\"false\" managed=\"true\" failed=\"false\" failure_ignored=\"false\" nodes_running_on=\"1\">
+                <node name=\"hana-s1-db1\" id=\"1\" cached=\"true\"/>
+            </resource>
+            <resource id=\"rsc_nc_HN2_HDB04\" resource_agent=\"ocf::heartbeat:azure-lb\" role=\"Started\" active=\"true\" orphaned=\"false\" blocked=\"false\" managed=\"true\" failed=\"false\" failure_ignored=\"false\" nodes_running_on=\"1\">
+                <node name=\"hana-s1-db1\" id=\"1\" cached=\"true\"/>
+            </resource>
+        </group>
+    </resources>
+    <node_attributes>
+        <node name=\"hana-s-mm\">
+            <attribute name=\"maintenance\" value=\"off\"/>
+        </node>
+        <node name=\"hana-s1-db1\">
+            <attribute name=\"hana_hn2_clone_state\" value=\"PROMOTED\"/>
+            <attribute name=\"hana_hn2_gra\" value=\"2.0\"/>
+            <attribute name=\"hana_hn2_gsh\" value=\"2.2\"/>
+            <attribute name=\"hana_hn2_roles\" value=\"master1:master:worker:master\"/>
+            <attribute name=\"hana_hn2_site\" value=\"HANA_S1\"/>
+            <attribute name=\"maintenance\" value=\"off\"/>
+            <attribute name=\"master-rsc_SAPHana_HN2_HDB04\" value=\"150\"/>
+        </node>
+        <node name=\"hana-s2-db1\">
+            <attribute name=\"hana_hn2_clone_state\" value=\"DEMOTED\"/>
+            <attribute name=\"hana_hn2_gra\" value=\"2.0\"/>
+            <attribute name=\"hana_hn2_gsh\" value=\"2.2\"/>
+            <attribute name=\"hana_hn2_roles\" value=\"master1:master:worker:master\"/>
+            <attribute name=\"hana_hn2_site\" value=\"HANA_S2\"/>
+            <attribute name=\"master-rsc_SAPHana_HN2_HDB04\" value=\"100\"/>
+        </node>
+    </node_attributes>
+    <node_history>
+        <node name=\"hana-s-mm\">
+            <resource_history id=\"rsc_nc_HN2_HDB04\" migration-threshold=\"50\" fail-count=\"0\"/>
+            <resource_history id=\"rsc_ip_HN2_HDB04\" migration-threshold=\"50\" fail-count=\"0\"/>
+        </node>
+        <node name=\"hana-s1-db1\">
+            <resource_history id=\"fs_HN2_HDB04_fscheck\"           migration-threshold=\"50\" fail-count=\"0\"/>
+            <resource_history id=\"rsc_SAPHanaTopology_HN2_HDB04\"  migration-threshold=\"50\" fail-count=\"0\"/>
+            <resource_history id=\"rsc_SAPHana_HN2_HDB04\"          migration-threshold=\"50\" fail-count=\"1\"/>
+            <resource_history id=\"rsc_ip_HN2_HDB04\"               migration-threshold=\"50\" fail-count=\"0\"/>
+            <resource_history id=\"rsc_nc_HN2_HDB04\"               migration-threshold=\"50\" fail-count=\"0\"/>
+        </node>
+        <node name=\"hana-s2-db1\">
+            <resource_history id=\"rsc_SAPHanaTopology_HN2_HDB04\"  migration-threshold=\"50\" fail-count=\"0\"/>
+            <resource_history id=\"fs_HN2_HDB04_fscheck\"           migration-threshold=\"50\" fail-count=\"0\"/>
+            <resource_history id=\"rsc_SAPHana_HN2_HDB04\"          migration-threshold=\"50\" fail-count=\"1\"/>
+        </node>
+    </node_history>
+    <tickets>
+    </tickets>
+    <bans>
+    </bans>
+</crm_mon>
+"""
+
+# Cluster configuration (cibadmin --query --local). Identical across all 3 host fixtures.
+[[commands]]
+matches = "cibadmin --query --local"
+output = """
+<cib crm_feature_set=\"3.7.0\" validate-with=\"pacemaker-3.0\" epoch=\"100\" num_updates=\"0\" admin_epoch=\"0\" cib-last-written=\"Fri Apr 17 09:52:36 2026\" update-origin=\"hana-s1-db1\" update-client=\"crm_attribute\" update-user=\"root\" have-quorum=\"1\" dc-uuid=\"1\">
+  <configuration>
+    <crm_config>
+      <cluster_property_set id=\"cib-bootstrap-options\">
+        <nvpair id=\"cib-bootstrap-options-have-watchdog\" name=\"have-watchdog\" value=\"true\"/>
+        <nvpair id=\"cib-bootstrap-options-dc-version\" name=\"dc-version\" value=\"2.1.5+20221208.a3f44794f-150500.6.14.4-2.1.5+20221208.a3f44794f\"/>
+        <nvpair id=\"cib-bootstrap-options-cluster-infrastructure\" name=\"cluster-infrastructure\" value=\"corosync\"/>
+        <nvpair id=\"cib-bootstrap-options-cluster-name\" name=\"cluster-name\" value=\"hacluster\"/>
+        <nvpair id=\"cib-bootstrap-options-stonith-enabled\" name=\"stonith-enabled\" value=\"true\"/>
+        <nvpair id=\"cib-bootstrap-options-stonith-watchdog-timeout\" name=\"stonith-watchdog-timeout\" value=\"-1\"/>
+        <nvpair id=\"cib-bootstrap-options-stonith-timeout\" name=\"stonith-timeout\" value=\"210\"/>
+        <nvpair id=\"cib-bootstrap-options-maintenance-mode\" name=\"maintenance-mode\" value=\"false\"/>
+        <nvpair id=\"cib-bootstrap-options-last-lrm-refresh\" name=\"last-lrm-refresh\" value=\"1765962253\"/>
+        <nvpair id=\"SAPHanaSR-hana_hn2_site_lss_HANA_S1\" name=\"hana_hn2_site_lss_HANA_S1\" value=\"4\"/>
+        <nvpair id=\"SAPHanaSR-hana_hn2_site_srr_HANA_S1\" name=\"hana_hn2_site_srr_HANA_S1\" value=\"P\"/>
+        <nvpair id=\"SAPHanaSR-hana_hn2_site_lss_HANA_S2\" name=\"hana_hn2_site_lss_HANA_S2\" value=\"4\"/>
+        <nvpair id=\"SAPHanaSR-hana_hn2_site_srr_HANA_S2\" name=\"hana_hn2_site_srr_HANA_S2\" value=\"S\"/>
+        <nvpair id=\"SAPHanaSR-hana_hn2_glob_upd\" name=\"hana_hn2_glob_upd\" value=\"ok\"/>
+        <nvpair id=\"SAPHanaSR-hana_hn2_site_mns_HANA_S1\" name=\"hana_hn2_site_mns_HANA_S1\" value=\"hana-s1-db1\"/>
+        <nvpair id=\"SAPHanaSR-hana_hn2_site_mns_HANA_S2\" name=\"hana_hn2_site_mns_HANA_S2\" value=\"hana-s2-db1\"/>
+        <nvpair id=\"SAPHanaSR-hana_hn2_site_lpt_HANA_S2\" name=\"hana_hn2_site_lpt_HANA_S2\" value=\"30\"/>
+        <nvpair id=\"SAPHanaSR-hana_hn2_site_lpt_HANA_S1\" name=\"hana_hn2_site_lpt_HANA_S1\" value=\"1776419556\"/>
+        <nvpair id=\"SAPHanaSR-hana_hn2_glob_sync_state\" name=\"hana_hn2_glob_sync_state\" value=\"SOK\"/>
+        <nvpair id=\"SAPHanaSR-hana_hn2_glob_prim\" name=\"hana_hn2_glob_prim\" value=\"HANA_S1\"/>
+        <nvpair id=\"SAPHanaSR-hana_hn2_glob_mts\" name=\"hana_hn2_glob_mts\" value=\"true\"/>
+        <nvpair id=\"SAPHanaSR-hana_hn2_site_srHook_HANA_S2\" name=\"hana_hn2_site_srHook_HANA_S2\" value=\"SOK\"/>
+        <nvpair id=\"SAPHanaSR-hana_hn2_site_srHook_HANA_S1\" name=\"hana_hn2_site_srHook_HANA_S1\" value=\"PRIM\"/>
+        <nvpair id=\"SAPHanaSR-hana_hn2_glob_sec\" name=\"hana_hn2_glob_sec\" value=\"HANA_S2\"/>
+      </cluster_property_set>
+    </crm_config>
+    <nodes>
+      <node id=\"1\" uname=\"hana-s1-db1\">
+        <instance_attributes id=\"nodes-1\">
+          <nvpair id=\"nodes-1-hana_hn2_site\" name=\"hana_hn2_site\" value=\"HANA_S1\"/>
+          <nvpair id=\"nodes-1-hana_hn2_gra\" name=\"hana_hn2_gra\" value=\"2.0\"/>
+          <nvpair id=\"nodes-1-maintenance\" name=\"maintenance\" value=\"off\"/>
+        </instance_attributes>
+      </node>
+      <node id=\"3\" uname=\"hana-s2-db1\">
+        <instance_attributes id=\"nodes-3\">
+          <nvpair id=\"nodes-3-hana_hn2_site\" name=\"hana_hn2_site\" value=\"HANA_S2\"/>
+          <nvpair id=\"nodes-3-hana_hn2_gra\" name=\"hana_hn2_gra\" value=\"2.0\"/>
+        </instance_attributes>
+      </node>
+      <node id=\"5\" uname=\"hana-s-mm\">
+        <instance_attributes id=\"nodes-5\">
+          <nvpair id=\"nodes-5-maintenance\" name=\"maintenance\" value=\"off\"/>
+        </instance_attributes>
+      </node>
+    </nodes>
+    <resources>
+      <clone id=\"cln_fs_HN2_HDB04_fscheck\">
+        <meta_attributes id=\"cln_fs_HN2_HDB04_fscheck-meta_attributes\">
+          <nvpair id=\"cln_fs_HN2_HDB04_fscheck-meta_attributes-clone-node-max\" name=\"clone-node-max\" value=\"1\"/>
+          <nvpair id=\"cln_fs_HN2_HDB04_fscheck-meta_attributes-interleave\" name=\"interleave\" value=\"true\"/>
+        </meta_attributes>
+        <primitive id=\"fs_HN2_HDB04_fscheck\" class=\"ocf\" provider=\"heartbeat\" type=\"Filesystem\">
+          <instance_attributes id=\"fs_HN2_HDB04_fscheck-instance_attributes\">
+            <nvpair id=\"fs_HN2_HDB04_fscheck-instance_attributes-device\" name=\"device\" value=\"/hana/shared/HN2/check\"/>
+            <nvpair id=\"fs_HN2_HDB04_fscheck-instance_attributes-directory\" name=\"directory\" value=\"/hana/check\"/>
+            <nvpair id=\"fs_HN2_HDB04_fscheck-instance_attributes-fstype\" name=\"fstype\" value=\"nfs4\"/>
+            <nvpair id=\"fs_HN2_HDB04_fscheck-instance_attributes-options\" name=\"options\" value=\"bind,defaults,rw,hard,proto=tcp,noatime,nfsvers=4.1,lock\"/>
+          </instance_attributes>
+          <operations>
+            <op id=\"fs_HN2_HDB04_fscheck-monitor-120\" name=\"monitor\" interval=\"120\" timeout=\"120\"/>
+            <op id=\"fs_HN2_HDB04_fscheck-start-0\" name=\"start\" interval=\"0\" timeout=\"120\"/>
+            <op id=\"fs_HN2_HDB04_fscheck-stop-0\" name=\"stop\" interval=\"0\" timeout=\"120\"/>
+          </operations>
+        </primitive>
+      </clone>
+      <clone id=\"cln_SAPHanaTopology_HN2_HDB04\">
+        <meta_attributes id=\"cln_SAPHanaTopology_HN2_HDB04-meta_attributes\">
+          <nvpair id=\"cln_SAPHanaTopology_HN2_HDB04-meta_attributes-clone-node-max\" name=\"clone-node-max\" value=\"1\"/>
+          <nvpair id=\"cln_SAPHanaTopology_HN2_HDB04-meta_attributes-target-role\" name=\"target-role\" value=\"Started\"/>
+          <nvpair id=\"cln_SAPHanaTopology_HN2_HDB04-meta_attributes-interleave\" name=\"interleave\" value=\"true\"/>
+        </meta_attributes>
+        <primitive id=\"rsc_SAPHanaTopology_HN2_HDB04\" class=\"ocf\" provider=\"suse\" type=\"SAPHanaTopology\">
+          <instance_attributes id=\"rsc_SAPHanaTopology_HN2_HDB04-instance_attributes\">
+            <nvpair id=\"rsc_SAPHanaTopology_HN2_HDB04-instance_attributes-SID\" name=\"SID\" value=\"HN2\"/>
+            <nvpair id=\"rsc_SAPHanaTopology_HN2_HDB04-instance_attributes-InstanceNumber\" name=\"InstanceNumber\" value=\"04\"/>
+          </instance_attributes>
+          <operations>
+            <op id=\"rsc_SAPHanaTopology_HN2_HDB04-monitor-10\" name=\"monitor\" interval=\"10\" timeout=\"600\"/>
+            <op id=\"rsc_SAPHanaTopology_HN2_HDB04-start-0\" name=\"start\" interval=\"0\" timeout=\"600\"/>
+            <op id=\"rsc_SAPHanaTopology_HN2_HDB04-stop-0\" name=\"stop\" interval=\"0\" timeout=\"300\"/>
+          </operations>
+        </primitive>
+      </clone>
+      <master id=\"msl_SAPHana_HN2_HDB04\">
+        <meta_attributes id=\"msl_SAPHana_HN2_HDB04-meta_attributes\">
+          <nvpair id=\"msl_SAPHana_HN2_HDB04-meta_attributes-clone-node-max\" name=\"clone-node-max\" value=\"1\"/>
+          <nvpair id=\"msl_SAPHana_HN2_HDB04-meta_attributes-master-max\" name=\"master-max\" value=\"1\"/>
+          <nvpair id=\"msl_SAPHana_HN2_HDB04-meta_attributes-interleave\" name=\"interleave\" value=\"true\"/>
+          <nvpair id=\"msl_SAPHana_HN2_HDB04-meta_attributes-maintenance\" name=\"maintenance\" value=\"false\"/>
+        </meta_attributes>
+        <primitive id=\"rsc_SAPHana_HN2_HDB04\" class=\"ocf\" provider=\"suse\" type=\"SAPHanaController\">
+          <instance_attributes id=\"rsc_SAPHana_HN2_HDB04-instance_attributes\">
+            <nvpair id=\"rsc_SAPHana_HN2_HDB04-instance_attributes-SID\" name=\"SID\" value=\"HN2\"/>
+            <nvpair id=\"rsc_SAPHana_HN2_HDB04-instance_attributes-InstanceNumber\" name=\"InstanceNumber\" value=\"04\"/>
+            <nvpair id=\"rsc_SAPHana_HN2_HDB04-instance_attributes-PREFER_SITE_TAKEOVER\" name=\"PREFER_SITE_TAKEOVER\" value=\"true\"/>
+            <nvpair id=\"rsc_SAPHana_HN2_HDB04-instance_attributes-DUPLICATE_PRIMARY_TIMEOUT\" name=\"DUPLICATE_PRIMARY_TIMEOUT\" value=\"7200\"/>
+            <nvpair id=\"rsc_SAPHana_HN2_HDB04-instance_attributes-AUTOMATED_REGISTER\" name=\"AUTOMATED_REGISTER\" value=\"false\"/>
+          </instance_attributes>
+          <operations>
+            <op id=\"rsc_SAPHana_HN2_HDB04-start-0\" name=\"start\" interval=\"0\" timeout=\"3600\"/>
+            <op id=\"rsc_SAPHana_HN2_HDB04-stop-0\" name=\"stop\" interval=\"0\" timeout=\"3600\"/>
+            <op id=\"rsc_SAPHana_HN2_HDB04-promote-0\" name=\"promote\" interval=\"0\" timeout=\"3600\"/>
+            <op id=\"rsc_SAPHana_HN2_HDB04-monitor-60\" name=\"monitor\" interval=\"60\" role=\"Master\" timeout=\"700\"/>
+            <op id=\"rsc_SAPHana_HN2_HDB04-monitor-61\" name=\"monitor\" interval=\"61\" role=\"Slave\" timeout=\"700\"/>
+            <op id=\"rsc_SAPHana_HN2_HDB04-demote-0s\" name=\"demote\" interval=\"0s\" timeout=\"320\"/>
+          </operations>
+        </primitive>
+      </master>
+      <group id=\"g_ip_HN2_HDB04\">
+        <primitive id=\"rsc_ip_HN2_HDB04\" class=\"ocf\" provider=\"heartbeat\" type=\"IPaddr2\">
+          <instance_attributes id=\"rsc_ip_HN2_HDB04-instance_attributes\">
+            <nvpair id=\"rsc_ip_HN2_HDB04-instance_attributes-ip\" name=\"ip\" value=\"10.23.0.30\"/>
+          </instance_attributes>
+          <operations>
+            <op id=\"rsc_ip_HN2_HDB04-monitor-10s\" name=\"monitor\" interval=\"10s\" timeout=\"20s\"/>
+            <op id=\"rsc_ip_HN2_HDB04-start-0s\" name=\"start\" interval=\"0s\" timeout=\"20s\"/>
+            <op id=\"rsc_ip_HN2_HDB04-stop-0s\" name=\"stop\" interval=\"0s\" timeout=\"20s\"/>
+          </operations>
+        </primitive>
+        <primitive id=\"rsc_nc_HN2_HDB04\" class=\"ocf\" provider=\"heartbeat\" type=\"azure-lb\">
+          <instance_attributes id=\"rsc_nc_HN2_HDB04-instance_attributes\">
+            <nvpair id=\"rsc_nc_HN2_HDB04-instance_attributes-port\" name=\"port\" value=\"62504\"/>
+          </instance_attributes>
+          <meta_attributes id=\"rsc_nc_HN2_HDB04-meta_attributes\">
+            <nvpair id=\"rsc_nc_HN2_HDB04-meta_attributes-resource-stickiness\" name=\"resource-stickiness\" value=\"0\"/>
+          </meta_attributes>
+          <operations>
+            <op id=\"rsc_nc_HN2_HDB04-monitor-10\" name=\"monitor\" interval=\"10\" timeout=\"20s\"/>
+            <op id=\"rsc_nc_HN2_HDB04-start-0s\" name=\"start\" interval=\"0s\" timeout=\"20s\"/>
+            <op id=\"rsc_nc_HN2_HDB04-stop-0s\" name=\"stop\" interval=\"0s\" timeout=\"20s\"/>
+          </operations>
+        </primitive>
+      </group>
+    </resources>
+    <constraints>
+      <rsc_location id=\"loc_cln_fs_HN2_HDB04_fscheck_not_on_mm\" node=\"hana-s-mm\" rsc=\"cln_fs_HN2_HDB04_fscheck\" score=\"-INFINITY\"/>
+      <rsc_location id=\"loc_SAPHanaCon_not_on_majority_maker\" node=\"hana-s-mm\" rsc=\"msl_SAPHana_HN2_HDB04\" score=\"-INFINITY\"/>
+      <rsc_location id=\"loc_SAPHanaTop_not_on_majority_maker\" node=\"hana-s-mm\" rsc=\"cln_SAPHanaTopology_HN2_HDB04\" score=\"-INFINITY\"/>
+    </constraints>
+  </configuration>
+</cib>
+"""
+
+# crm_mon -1: live cluster status. trento-agent's IsHostOnline only checks the
+# exit code; the output is debug-logged but never parsed.
+[[commands]]
+matches = "crm_mon -1"
+output = """
+Cluster Summary:
+  * Stack: corosync
+  * Current DC: hana-s1-db1 (version 2.1.5+20221208.a3f44794f-150500.6.14.4-2.1.5+20221208.a3f44794f) - partition with quorum
+  * Last updated: Fri Apr 17 09:52:40 2026
+  * Last change:  Fri Apr 17 09:52:36 2026 by root via crm_attribute on hana-s1-db1
+  * 3 nodes configured
+  * 11 resource instances configured
+
+Node List:
+  * Online: [ hana-s-mm hana-s1-db1 hana-s2-db1 ]
+"""
+
+# crmadmin -qD: DC node name. cluster.GetState calls this and feeds the
+# trimmed result back into `crmadmin -qS <node>` below.
+[[commands]]
+matches = "crmadmin -qD"
+output = "hana-s1-db1"
+
+# crmadmin -qS <node>: cluster state for the named node. The agent compares
+# the trimmed output against the constant "S_IDLE" (cmdclient.go:idleState).
+[[commands]]
+matches = "crmadmin -qS hana-s1-db1"
+output = "S_IDLE"
+
+# HANA system replication status. Per-host: this is the primary site, reports PRIM/Site1.
+[[commands]]
+matches = "python /usr/sap/MCK/MCK00/exe/python_support/systemReplicationStatus.py --sapcontrol=1"
+output = """
+SAPCONTROL-OK: <begin>
+service/hana-s1-db1/30001/SITE_ID=1
+service/hana-s1-db1/30001/SITE_NAME=HANA_S1
+service/hana-s1-db1/30001/SECONDARY_SITE_NAME=HANA_S2
+service/hana-s1-db1/30001/SERVICE_NAME=nameserver
+service/hana-s1-db1/30001/PORT=30001
+service/hana-s1-db1/30001/SECONDARY_ACTIVE_STATUS=YES
+service/hana-s1-db1/30001/REPLICATION_STATUS_DETAILS=
+service/hana-s1-db1/30001/OPERATION_MODE=logreplay
+site/2/SITE_NAME=HANA_S2
+site/2/SOURCE_SITE_ID=1
+site/2/REPLICATION_MODE=SYNC
+site/2/REPLICATION_STATUS=ACTIVE
+overall_replication_status=ACTIVE
+site/1/REPLICATION_MODE=PRIMARY
+site/1/SITE_NAME=HANA_S1
+local_site_id=1
+SAPCONTROL-OK: <end>
+"""
+
+[[commands]]
+matches = "python /usr/sap/MCK/MCK00/exe/python_support/landscapeHostConfiguration.py --sapcontrol=1"
+output = """
+SAPCONTROL-OK: <begin>
+hostActualRoles=worker
+removeStatus=
+nameServerConfigRole=master 1
+failoverStatus=
+hostConfigRoles=worker
+failoverActualGroup=default
+storageConfigPartition=1
+host=hana-s1-db1
+indexServerConfigRole=worker
+failoverConfigGroup=default
+storageActualPartition=1
+indexServerActualRole=master
+nameServerActualRole=master
+hostActive=yes
+workerActualGroups=default
+workerConfigGroups=default
+hostStatus=ok
+storagePartition=1
+SAPCONTROL-OK: <end>
+"""
+
+[[commands]]
+matches = "/usr/sap/MCK/MCK00/exe/hdbnsutil -sr_state -sapcontrol=1"
+output = """
+SAPCONTROL-OK: <begin>
+online=true
+mode=primary
+operation mode=primary
+site id=1
+site name=HANA_S1
+isSource=true
+isConsumer=false
+hasConsumers=true
+isTakeoverActive=false
+isPrimarySuspended=false
+mapping/hana-s1-db1=HANA_S2/hana-s2-db1
+mapping/hana-s1-db1=HANA_S1/hana-s1-db1
+siteTier/HANA_S1=1
+siteTier/HANA_S2=2
+siteReplicationMode/HANA_S1=primary
+siteReplicationMode/HANA_S2=sync
+siteOperationMode/HANA_S1=primary
+siteOperationMode/HANA_S2=logreplay
+siteMapping/HANA_S1=HANA_S2
+SAPCONTROL-OK: <end>
+done.
+"""

@@ -1,0 +1,40 @@
+{{ .Chart.Name }} {{ .Chart.Version }} installed as release {{ .Release.Name }}
+in namespace {{ .Release.Namespace }}.
+
+Scenario: {{ .Values.scenario }}
+Agent image (shared): {{ .Values.agentImage }}
+Hosts deployed:
+{{- range .Values.hosts }}
+  - {{ .name }}  files={{ .filesImage }}  agent-id={{ .agentId }}
+{{- end }}
+
+Each host is a Deployment with a single Pod whose hostname matches the
+cluster node name. Agents connect to:
+  server-url:        {{ .Values.trento.serverUrl }}
+  facts-service-url: {{ .Values.trento.factsServiceUrl }}
+
+If pods stay in ImagePullBackOff, the local images are missing from the cluster.
+Re-run hack/start.sh (which builds + `k3d image import`s every image), or
+manually:
+  k3d image import {{ .Values.agentImage }} -c <cluster>
+{{- range .Values.hosts }}
+  k3d image import {{ .filesImage }} -c <cluster>
+{{- end }}
+
+If the host pods are Running but the agent reports
+"No HA cluster discovered on this host" / "fork/exec /usr/sbin/dmidecode: no
+such file or directory", the cluster's ImageVolume feature gate is off and the
+apiserver is silently dropping volumes[].image from the deployment.
+
+ImageVolume is Alpha in Kubernetes 1.31-1.32 (off by default) and Beta in 1.33+
+(on by default). Recreate the k3d cluster with the gate enabled:
+
+  k3d cluster delete <cluster>
+  k3d cluster create <cluster> \
+    --image rancher/k3s:v1.32.0-k3s1 \
+    --k3s-arg '--kube-apiserver-arg=feature-gates=ImageVolume=true@server:*' \
+    --k3s-arg '--kubelet-arg=feature-gates=ImageVolume=true@server:*' \
+    <other flags as before>
+
+Or pin to k3s 1.33+ where the gate is on by default:
+  k3d cluster create <cluster> --image rancher/k3s:v1.33.0-k3s1 <other flags as before>

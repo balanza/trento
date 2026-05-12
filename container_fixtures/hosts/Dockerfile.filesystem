@@ -1,0 +1,22 @@
+# Per-host filesystem image.
+#
+# Holds the per-host /etc and /usr overlay under /fixture/. The image is run
+# as an initContainer in the agent pod; the initContainer copies /fixture/
+# into a shared emptyDir, which the agent container then mounts read-only at
+# /fixture and overlays onto its own root via init.sh.
+#
+# SUSE BCI base (not scratch) so the initContainer has a usable shell and
+# `cp`. The overlay lives under /fixture/ inside the image, NOT at /, so we
+# don't ship the base's own /etc and /usr.
+#
+# Build:
+#   docker build -f container_fixtures/hosts/Dockerfile.filesystem \
+#                --build-arg SCENARIO=hana-scale-out \
+#                --build-arg HOST=hana-s1-db1 \
+#                -t local/files:hana-scale-out-hana-s1-db1 .
+ARG OS_VER=15.7
+FROM registry.suse.com/bci/bci-base:${OS_VER}
+
+ARG SCENARIO
+ARG HOST
+COPY container_fixtures/hosts/${SCENARIO}/${HOST}/ /fixture/

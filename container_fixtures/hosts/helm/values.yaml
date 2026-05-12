@@ -1,0 +1,41 @@
+# Connection info that every host fixture uses to talk to the trento application.
+# In-cluster service URLs assume host-fixtures is installed in the same namespace
+# as the trento-server release named "trento".
+trento:
+  serverUrl: "http://trento-web:4000"
+  # Must be injected at install time. hack/start.sh extracts the current key
+  # from the running trento-web pod via `trento eval` and passes it through
+  # as --set trento.apiKey=<value>. Left empty here so a bare `helm install`
+  # produces a visibly broken ConfigMap instead of silently using a stale token.
+  apiKey: ""
+  factsServiceUrl: "amqp://trento:trento@trento-rabbitmq:5672"
+
+# Single agent image shared by every host pod. Built once from Dockerfile.agent.
+agentImage: "local/agent:dev"
+
+# Scenario name. Used purely for labelling; the host list below already names
+# images and ids explicitly.
+scenario: hana-scale-out
+
+# One entry per simulated host. filesImage must already exist in the local
+# cluster (k3d image import). Built per-host from Dockerfile.filesystem
+# (SUSE BCI base, /etc and /usr under /fixture/); used as an init container
+# that copies its /fixture/ tree into a shared emptyDir which the agent
+# container then overlays onto its own root.
+#
+# hasSap=true on hosts that ship SAP-only files (etc/soappatrol.toml, the
+# SAP shims under usr/bin, and the usr/sap tree). Not currently consumed by
+# the chart; kept for documentation.
+hosts:
+  - name: hana-s1-db1
+    filesImage: local/files:hana-scale-out-hana-s1-db1
+    agentId: a1ce50e1-7afc-43c1-8753-fd1b24b90514
+    hasSap: true
+  - name: hana-s2-db1
+    filesImage: local/files:hana-scale-out-hana-s2-db1
+    agentId: b2df61f2-8b0d-54d2-9864-fe2c35ca1625
+    hasSap: true
+  - name: hana-s-mm
+    filesImage: local/files:hana-scale-out-hana-s-mm
+    agentId: c3e072f3-9c1e-65e3-a975-ff3d46db2736
+    hasSap: false

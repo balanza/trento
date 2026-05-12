@@ -1,0 +1,9 @@
+apiVersion: v2
+name: host-fixtures
+description: |
+  Deploys simulated SAP/HANA host fixtures (one Pod per host) into the same
+  cluster as a Trento server release. Each host runs trento-agent against the
+  shared cluster mocks defined in container_fixtures/hosts/<scenario>/<host>/.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

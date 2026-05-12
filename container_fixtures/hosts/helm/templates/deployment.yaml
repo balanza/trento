@@ -1,0 +1,72 @@
+{{- /*
+One Deployment per host.
+
+  - main container "agent": shared image $.Values.agentImage. The per-host
+    overlay is staged into a shared emptyDir at /fixture by an initContainer,
+    and init.sh overlays /fixture/etc and /fixture/usr onto the agent's own
+    root before launching trento-agent.
+  - initContainer "files": runs the per-host .filesImage and copies its
+    /fixture/ tree into the shared emptyDir. This avoids the Kubernetes
+    ImageVolume feature (which requires both an opt-in feature gate AND
+    containerd >= 2.1) at the cost of a per-pod-start copy of a tiny
+    overlay.
+  - spec.hostname: matches the cluster node name in the cibadmin/crm_mon
+    mocks so the agent's IsDC() check resolves correctly via os.Hostname().
+  - imagePullPolicy: Never because images are loaded into k3d via
+    `k3d image import` and don't live in any registry.
+*/}}
+{{- range .Values.hosts }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "host-fixtures.hostName" (dict "Release" $.Release "host" .name) }}
+  labels:
+    {{- include "host-fixtures.labels" $ | nindent 4 }}
+    fixture/host: {{ .name | quote }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: host-fixtures
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+      fixture/host: {{ .name | quote }}
+  template:
+    metadata:
+      labels:
+        {{- include "host-fixtures.labels" $ | nindent 8 }}
+        fixture/host: {{ .name | quote }}
+    spec:
+      hostname: {{ .name | quote }}
+      initContainers:
+        - name: files
+          image: {{ .filesImage | quote }}
+          imagePullPolicy: Never
+          command: ["sh", "-c"]
+          args: ["cp -a /fixture/. /shared/"]
+          volumeMounts:
+            - name: fixture
+              mountPath: /shared
+      containers:
+        - name: agent
+          image: {{ $.Values.agentImage | quote }}
+          imagePullPolicy: Never
+          env:
+            - name: TRENTO_AGENT_ID
+              value: {{ .agentId | quote }}
+          volumeMounts:
+            - name: agent-config
+              mountPath: /etc/trento/agent.yaml
+              subPath: agent.yaml
+            - name: fixture
+              mountPath: /fixture
+              readOnly: true
+      volumes:
+        - name: fixture
+          emptyDir: {}
+        - name: agent-config
+          configMap:
+            name: {{ include "host-fixtures.hostName" (dict "Release" $.Release "host" .name) }}
+{{- end }}

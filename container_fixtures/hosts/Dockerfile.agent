@@ -1,0 +1,51 @@
+# Per-scenario host-fixture build is split into two images:
+#
+#   1. local/agent:dev      — built from THIS Dockerfile. trento-agent + system
+#                              dependencies (catatonit, alloy, soappatrol,
+#                              fakemall) + the shared init.sh entrypoint.
+#                              Same image for every host; built once.
+#   2. local/files:<scenario>-<host>
+#                            — built from Dockerfile.filesystem. busybox base
+#                              with the per-host /etc and /usr overlay under
+#                              /fixture/. Built per-host; tiny and instant.
+#
+# At deploy time the Helm chart runs the per-host files image as an init
+# container that copies its /fixture/ tree into a shared emptyDir; the agent
+# container then mounts that emptyDir read-only at /fixture and init.sh
+# overlays /fixture/etc and /fixture/usr onto the agent's root.
+#
+# Build:
+#   docker build -f container_fixtures/hosts/Dockerfile.agent \
+#                -t local/agent:dev .
+
+# Global ARG: declared before the first FROM so it's visible to every stage's
+# FROM line. Per-stage `ARG OS_VER` redeclarations would otherwise be needed.
+ARG OS_VER=15.7
+
+# Build the agent from the local source.
+FROM golang AS agent-builder
+
+COPY agent agent
+RUN cd agent && make build VERSION="0.0.0"
+RUN cp "agent/build/$(go env GOARCH)/trento-agent" agent/trento-agent
+
+
+# Final image. No per-host content.
+FROM registry.suse.com/bci/bci-base:${OS_VER}
+
+RUN zypper -n in catatonit gpg2 && \
+    rpm --import https://rpm.grafana.com/gpg.key && \
+    zypper -n addrepo --no-gpgcheck https://rpm.grafana.com grafana && \
+    zypper -n --no-gpg-checks --gpg-auto-import-keys refresh && \
+    zypper -n --no-gpg-checks in alloy
+
+COPY --from=agent-builder /go/agent/trento-agent /usr/bin/trento-agent
+COPY --from=ghcr.io/dottorblaster/soappatrol:latest /bin/soappatrol /usr/bin/soappatrol
+COPY --from=ghcr.io/trento-project/fakemall:latest /bin/fakemall /usr/bin/fakemall
+
+COPY container_fixtures/hosts/init.sh /init.sh
+RUN chmod +x /init.sh
+
+RUN useradd -ms /bin/bash mckadm
+
+ENTRYPOINT ["catatonit", "--", "/init.sh"]
