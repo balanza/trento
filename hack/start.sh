@@ -18,6 +18,16 @@ readonly HOSTS_RELEASE_NAME="host-fixtures"
 readonly TAG="dev"
 readonly REGISTRY_PREFIX="local"
 
+# Local-contracts mode: when ./contracts has uncommitted changes OR is on a
+# named branch other than 'main', the consumers (web, wanda, agent) are
+# rebuilt against ./contracts instead of the upstream-pinned version.
+# Mechanism: copy ./contracts/{elixir,go} into a sentinel dir inside each
+# consumer, rewrite the trento_contracts dep declaration to point there,
+# build, then revert on exit.
+readonly LOCAL_CONTRACTS_SENTINEL=".trento-local-contracts"
+readonly LOCAL_CONTRACTS_BACKUP_EXT=".trento-local-contracts.bak"
+PATCHED_CONSUMERS=()
+
 usage() {
   cat <<EOF
 Usage: $(basename "$0") [options]
@@ -27,13 +37,23 @@ to use the local images 'local/trento-{web,wanda,checks}:dev'. By default no
 images are built; pass --build to (re)build a subset before deploying.
 
 Options:
-  --build <csv>          Comma-separated subset of services to build and import
-                         into the k3d cluster (valid: web, wanda, checks).
-                         If omitted, no images are built; the local images are
-                         assumed to already exist in the cluster.
+  --build <csv>          Comma-separated subset of services to (re)build
+                         (valid: web, wanda, checks, agent). Any service
+                         whose local image is missing is auto-added to this
+                         set, so first runs work without flags. Every known
+                         service image present locally is imported into the
+                         k3d cluster on every run.
   --release-name <name>  Helm release name (default: trento).
   --namespace <ns>       Kubernetes namespace (default: default).
   -h, --help             Show this help and exit.
+
+Local-contracts mode (auto-detected):
+  When the contracts submodule has uncommitted changes OR is on a named
+  branch other than 'main', any service listed in --build is wired against
+  ./contracts instead of the upstream-pinned version (mix.exs / go.mod
+  patched under the consumer's tree, reverted on script exit). Services
+  not in --build keep their previous image untouched — add them to --build
+  yourself when you need them rebuilt against the local contracts.
 EOF
 }
 
@@ -44,6 +64,116 @@ die() {
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
+}
+
+# Returns 0 (true) when the contracts submodule has uncommitted changes OR is
+# on a named branch other than 'main'. A detached HEAD (the default state
+# after `git submodule update`) returns 1 (use upstream pin).
+should_use_local_contracts() {
+  local sm="${PROJECT_ROOT}/contracts"
+  [[ -e "${sm}/.git" ]] || return 1
+  if [[ -n "$(git -C "$sm" status --porcelain 2>/dev/null)" ]]; then
+    return 0
+  fi
+  local br
+  br="$(git -C "$sm" symbolic-ref --short HEAD 2>/dev/null || true)"
+  [[ -n "$br" && "$br" != "main" ]]
+}
+
+# Refuse to patch a manifest that has uncommitted changes — overwriting it
+# would clobber the user's in-progress edits, and our backup/restore would
+# silently lose them.
+assert_manifest_clean() {
+  local consumer="$1" manifest="$2"
+  local dir="${PROJECT_ROOT}/${consumer}"
+  if ! git -C "$dir" diff --quiet HEAD -- "$manifest" 2>/dev/null; then
+    die "${consumer}/${manifest} has uncommitted changes — refusing to patch. Commit or stash, then re-run."
+  fi
+}
+
+apply_local_contracts_to_elixir() {
+  local consumer="$1"
+  local dir="${PROJECT_ROOT}/${consumer}"
+  local manifest="${dir}/mix.exs"
+  local sentinel="${dir}/${LOCAL_CONTRACTS_SENTINEL}/elixir"
+
+  echo ">> [local-contracts] patching ${consumer}/mix.exs to use ./contracts/elixir"
+  rm -rf "${dir}/${LOCAL_CONTRACTS_SENTINEL}"
+  mkdir -p "$sentinel"
+  cp -a "${PROJECT_ROOT}/contracts/elixir/." "$sentinel/"
+  cp "$manifest" "${manifest}${LOCAL_CONTRACTS_BACKUP_EXT}"
+  perl -i -0777 -pe \
+    's/^(\s*)\{:trento_contracts,.*?\},\s*$/$1\{:trento_contracts, path: "'"${LOCAL_CONTRACTS_SENTINEL}"'\/elixir"\},/sm' \
+    "$manifest"
+  PATCHED_CONSUMERS+=("$consumer")
+}
+
+apply_local_contracts_to_agent() {
+  local dir="${PROJECT_ROOT}/agent"
+  local manifest="${dir}/go.mod"
+  local sentinel="${dir}/${LOCAL_CONTRACTS_SENTINEL}/go"
+
+  echo ">> [local-contracts] patching agent/go.mod to use ./contracts/go"
+  rm -rf "${dir}/${LOCAL_CONTRACTS_SENTINEL}"
+  mkdir -p "$sentinel"
+  cp -a "${PROJECT_ROOT}/contracts/go/." "$sentinel/"
+  cp "$manifest" "${manifest}${LOCAL_CONTRACTS_BACKUP_EXT}"
+  printf '\nreplace github.com/trento-project/contracts/go => ./%s/go\n' \
+    "$LOCAL_CONTRACTS_SENTINEL" >> "$manifest"
+  PATCHED_CONSUMERS+=("agent")
+}
+
+build_includes() {
+  local svc="$1" s
+  for s in "${build_services[@]:-}"; do
+    [[ "$s" == "$svc" ]] && return 0
+  done
+  return 1
+}
+
+# Maps a service name to its expected local image tag. Knowing the canonical
+# image lets the script (a) auto-build a service whose image is missing and
+# (b) always import the image into the cluster regardless of whether it was
+# built this run.
+service_image() {
+  case "$1" in
+    web|wanda|checks) echo "${REGISTRY_PREFIX}/trento-${1}:${TAG}" ;;
+    agent)            echo "${HOSTS_AGENT_IMAGE}" ;;
+    *) return 1 ;;
+  esac
+}
+
+image_exists_locally() {
+  docker image inspect "$1" >/dev/null 2>&1
+}
+
+import_to_cluster() {
+  local image="$1"
+  if ! image_exists_locally "$image"; then
+    return 0   # nothing to import; auto-build pass should have caught this
+  fi
+  echo ">> importing ${image} into k3d cluster ${cluster}"
+  k3d image import "$image" -c "$cluster"
+}
+
+cleanup_local_contracts() {
+  if [[ ${#PATCHED_CONSUMERS[@]} -eq 0 ]]; then
+    return 0
+  fi
+  local consumer dir manifest
+  for consumer in "${PATCHED_CONSUMERS[@]}"; do
+    dir="${PROJECT_ROOT}/${consumer}"
+    case "$consumer" in
+      web|wanda) manifest="${dir}/mix.exs" ;;
+      agent)     manifest="${dir}/go.mod" ;;
+      *) continue ;;
+    esac
+    if [[ -f "${manifest}${LOCAL_CONTRACTS_BACKUP_EXT}" ]]; then
+      mv "${manifest}${LOCAL_CONTRACTS_BACKUP_EXT}" "$manifest"
+    fi
+    rm -rf "${dir}/${LOCAL_CONTRACTS_SENTINEL}"
+  done
+  PATCHED_CONSUMERS=()
 }
 
 build_csv=""
@@ -94,8 +224,8 @@ if [[ -n "$build_csv" ]]; then
   [[ ${#build_services[@]} -gt 0 ]] || die "--build must list at least one service"
   for svc in "${build_services[@]}"; do
     case "$svc" in
-      web|wanda|checks) ;;
-      *) die "unknown service: '$svc' (valid: web, wanda, checks)" ;;
+      web|wanda|checks|agent) ;;
+      *) die "unknown service: '$svc' (valid: web, wanda, checks, agent)" ;;
     esac
   done
 else
@@ -104,8 +234,8 @@ fi
 
 require_cmd kubectl
 require_cmd helm
-# docker and k3d are needed unconditionally now: the host-fixture images are
-# always (re)built and imported. Layer cache makes re-runs cheap.
+# docker and k3d are needed unconditionally: the per-host files images are
+# always built and imported. Layer cache makes re-runs cheap.
 require_cmd docker
 require_cmd k3d
 
@@ -143,20 +273,73 @@ esac
 
 echo ">> using k3d cluster: ${cluster}"
 
-if [[ ${#build_services[@]} -gt 0 ]]; then
-  for svc in "${build_services[@]}"; do
-    image="${REGISTRY_PREFIX}/trento-${svc}:${TAG}"
-    ctx="${PROJECT_ROOT}/${svc}"
+# Auto-add any service whose local image is missing. This makes first runs
+# (and recoveries from `docker image rm`) work without the user having to
+# remember to pass --build for every service. Runs before local-contracts
+# pre-flight so the manifest-clean check covers auto-added services too.
+for svc in web wanda checks agent; do
+  image="$(service_image "$svc")"
+  if ! image_exists_locally "$image" && ! build_includes "$svc"; then
+    echo ">> image '${image}' not found locally; auto-adding '${svc}' to --build"
+    build_services+=("$svc")
+  fi
+done
 
-    echo ">> building ${image} from ${ctx}"
-    docker build -t "$image" "$ctx"
-
-    echo ">> importing ${image} into k3d cluster ${cluster}"
-    k3d image import "$image" -c "$cluster"
+# Decide once whether to inject ./contracts into the consumer builds. Only
+# the consumers actually being rebuilt (i.e. listed in --build) get patched
+# — a service the user didn't ask to rebuild keeps its previous image and
+# its manifest is left untouched. The user is responsible for adding
+# web/wanda/agent to --build when they want a fresh image to pick up local
+# contracts changes.
+use_local_contracts=false
+if should_use_local_contracts; then
+  use_local_contracts=true
+  trap cleanup_local_contracts EXIT
+  contracts_branch="$(git -C "${PROJECT_ROOT}/contracts" symbolic-ref --short HEAD 2>/dev/null || echo '(detached)')"
+  contracts_dirty="$(git -C "${PROJECT_ROOT}/contracts" status --porcelain 2>/dev/null | head -n1)"
+  if [[ -n "$contracts_dirty" ]]; then
+    echo ">> contracts: dirty (branch=${contracts_branch}) — using local ./contracts for whatever is in --build"
+  else
+    echo ">> contracts: on branch '${contracts_branch}' — using local ./contracts for whatever is in --build"
+  fi
+  for svc in "${build_services[@]:-}"; do
+    case "$svc" in
+      web|wanda) assert_manifest_clean "$svc" "mix.exs" ;;
+      agent)     assert_manifest_clean "agent" "go.mod" ;;
+    esac
   done
 else
-  echo ">> --build not provided; assuming local/trento-{web,wanda,checks}:${TAG} already exist in cluster"
+  echo ">> contracts: clean and on main (or detached at submodule pin) — using upstream pin"
 fi
+
+trento_services=()
+for svc in "${build_services[@]:-}"; do
+  case "$svc" in
+    web|wanda|checks) trento_services+=("$svc") ;;
+  esac
+done
+
+for svc in "${trento_services[@]:-}"; do
+  image="$(service_image "$svc")"
+  ctx="${PROJECT_ROOT}/${svc}"
+
+  if [[ "$use_local_contracts" == "true" ]]; then
+    case "$svc" in
+      web|wanda) apply_local_contracts_to_elixir "$svc" ;;
+    esac
+  fi
+
+  echo ">> building ${image} from ${ctx}"
+  docker build -t "$image" "$ctx"
+done
+
+# Always import every trento service image present locally — covers freshly
+# built images from this run AND pre-existing ones from prior runs (the
+# k3d cluster may have been recreated, so we can't assume containerd
+# already has them).
+for svc in web wanda checks; do
+  import_to_cluster "$(service_image "$svc")"
+done
 
 set_args=(
   --set "trento-web.adminUser.username=admin"
@@ -244,14 +427,20 @@ api_key="$(kubectl exec -n "$namespace" "$web_pod" -- \
 # container then mounts that emptyDir read-only at /fixture and init.sh
 # overlays /fixture/etc and /fixture/usr onto the agent's own root.
 
-echo ">> building ${HOSTS_AGENT_IMAGE} (shared agent image)"
-docker build \
-  -f "$HOSTS_AGENT_DOCKERFILE" \
-  -t "$HOSTS_AGENT_IMAGE" \
-  "$PROJECT_ROOT"
+if build_includes agent; then
+  if [[ "$use_local_contracts" == "true" ]]; then
+    apply_local_contracts_to_agent
+  fi
 
-echo ">> importing ${HOSTS_AGENT_IMAGE} into k3d cluster ${cluster}"
-k3d image import "$HOSTS_AGENT_IMAGE" -c "$cluster"
+  echo ">> building ${HOSTS_AGENT_IMAGE} (shared agent image)"
+  docker build \
+    -f "$HOSTS_AGENT_DOCKERFILE" \
+    -t "$HOSTS_AGENT_IMAGE" \
+    "$PROJECT_ROOT"
+fi
+
+# Always import the agent image (whether built this run or pre-existing).
+import_to_cluster "$HOSTS_AGENT_IMAGE"
 
 for host in "${HOSTS[@]}"; do
   files_image="${REGISTRY_PREFIX}/files:${HOSTS_SCENARIO}-${host}"
