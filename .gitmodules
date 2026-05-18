@@ -16,3 +16,6 @@
 [submodule "helm-charts"]
 	path = helm-charts
 	url = git@github.com:trento-project/helm-charts.git
+[submodule "docs"]
+	path = docs
+	url = git@github.com:trento-project/docs.git
