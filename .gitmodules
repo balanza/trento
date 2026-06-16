@@ -16,3 +16,6 @@
 [submodule "helm-charts"]
 	path = helm-charts
 	url = git@github.com:trento-project/helm-charts.git
+[submodule "mcp-server"]
+	path = mcp-server
+	url = git@github.com:trento-project/mcp-server.git
