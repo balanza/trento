@@ -163,3 +163,220 @@ func RepoClone(ctx context.Context, repo, dir string) error {
 	}
 	return nil
 }
+
+// --- CI workflow runs + jobs ---
+
+// WorkflowRun is the flattened typed view of one Actions workflow run.
+type WorkflowRun struct {
+	ID         int64
+	Name       string
+	Status     string // queued | in_progress | completed
+	Conclusion string // success | failure | cancelled | timed_out | "" until terminal
+	HeadSHA    string
+	URL        string
+}
+
+// JobStep is one step of a job (used to spot which step failed for the
+// log analysis prompt).
+type JobStep struct {
+	Name       string
+	Number     int
+	Conclusion string // success | failure | skipped | ""
+}
+
+// WorkflowJob is one job inside a workflow run.
+type WorkflowJob struct {
+	ID         int64
+	RunID      int64
+	Name       string
+	Status     string
+	Conclusion string
+	Steps      []JobStep
+}
+
+type rawWorkflowRun struct {
+	ID         int64  `json:"id"`
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	Conclusion string `json:"conclusion"`
+	HeadSHA    string `json:"head_sha"`
+	URL        string `json:"html_url"`
+}
+
+type rawJob struct {
+	ID         int64  `json:"id"`
+	RunID      int64  `json:"run_id"`
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	Conclusion string `json:"conclusion"`
+	Steps      []struct {
+		Name       string `json:"name"`
+		Number     int    `json:"number"`
+		Conclusion string `json:"conclusion"`
+	} `json:"steps"`
+}
+
+type rawJobsEnvelope struct {
+	Jobs []rawJob `json:"jobs"`
+}
+
+func parseWorkflowRunsJSON(b []byte) ([]WorkflowRun, error) {
+	var raws []rawWorkflowRun
+	if err := json.Unmarshal(b, &raws); err != nil {
+		return nil, fmt.Errorf("parseWorkflowRunsJSON: %w", err)
+	}
+	out := make([]WorkflowRun, 0, len(raws))
+	for _, r := range raws {
+		out = append(out, WorkflowRun{
+			ID: r.ID, Name: r.Name, Status: r.Status, Conclusion: r.Conclusion,
+			HeadSHA: r.HeadSHA, URL: r.URL,
+		})
+	}
+	return out, nil
+}
+
+func parseJobsForRunJSON(b []byte) ([]WorkflowJob, error) {
+	var env rawJobsEnvelope
+	if err := json.Unmarshal(b, &env); err != nil {
+		return nil, fmt.Errorf("parseJobsForRunJSON: %w", err)
+	}
+	out := make([]WorkflowJob, 0, len(env.Jobs))
+	for _, r := range env.Jobs {
+		steps := make([]JobStep, 0, len(r.Steps))
+		for _, s := range r.Steps {
+			steps = append(steps, JobStep{Name: s.Name, Number: s.Number, Conclusion: s.Conclusion})
+		}
+		out = append(out, WorkflowJob{
+			ID: r.ID, RunID: r.RunID, Name: r.Name, Status: r.Status,
+			Conclusion: r.Conclusion, Steps: steps,
+		})
+	}
+	return out, nil
+}
+
+// RunListForSHA lists workflow runs whose head SHA matches.
+// Wraps `gh api repos/<repo>/actions/runs?head_sha=<sha>&per_page=100`
+// and parses the `workflow_runs` array. We page once (100 entries) —
+// any PR with >100 workflow runs on a single SHA has bigger problems.
+func RunListForSHA(ctx context.Context, repo, sha string) ([]WorkflowRun, error) {
+	path := fmt.Sprintf("repos/%s/actions/runs?head_sha=%s&per_page=100", repo, sha)
+	out, err := APIGet(ctx, path, ".workflow_runs")
+	if err != nil {
+		return nil, fmt.Errorf("gh.RunListForSHA %s/%s: %w", repo, sha, err)
+	}
+	if strings.TrimSpace(out) == "" || strings.TrimSpace(out) == "null" {
+		return nil, nil
+	}
+	return parseWorkflowRunsJSON([]byte(out))
+}
+
+// JobsForRun lists the jobs inside one workflow run.
+// Wraps `gh api repos/<repo>/actions/runs/<runID>/jobs?per_page=100`.
+func JobsForRun(ctx context.Context, repo string, runID int64) ([]WorkflowJob, error) {
+	path := fmt.Sprintf("repos/%s/actions/runs/%d/jobs?per_page=100", repo, runID)
+	out, err := APIGet(ctx, path, "")
+	if err != nil {
+		return nil, fmt.Errorf("gh.JobsForRun %s/%d: %w", repo, runID, err)
+	}
+	if strings.TrimSpace(out) == "" {
+		return nil, nil
+	}
+	return parseJobsForRunJSON([]byte(out))
+}
+
+// JobLogs returns the raw log text for one job. gh follows the
+// presigned-URL redirect transparently.
+// Wraps `gh api repos/<repo>/actions/jobs/<jobID>/logs`.
+func JobLogs(ctx context.Context, repo string, jobID int64) (string, error) {
+	path := fmt.Sprintf("repos/%s/actions/jobs/%d/logs", repo, jobID)
+	out, err := lib.MustSh(ctx, "", "gh", "api", path)
+	if err != nil {
+		return "", fmt.Errorf("gh.JobLogs %s/%d: %w", repo, jobID, err)
+	}
+	return out, nil
+}
+
+// RunRerunFailed reruns only the failed jobs of one workflow run.
+// Wraps `gh api -X POST repos/<repo>/actions/runs/<runID>/rerun-failed-jobs`.
+func RunRerunFailed(ctx context.Context, repo string, runID int64) error {
+	path := fmt.Sprintf("repos/%s/actions/runs/%d/rerun-failed-jobs", repo, runID)
+	if _, err := lib.MustSh(ctx, "", "gh", "api", "-X", "POST", path); err != nil {
+		return fmt.Errorf("gh.RunRerunFailed %s/%d: %w", repo, runID, err)
+	}
+	return nil
+}
+
+// PRHeadSHA returns the current head SHA of the PR. Refresh between
+// iterations: we push new commits, which moves the SHA.
+// Wraps `gh api repos/<repo>/pulls/<num>` + jq for .head.sha.
+func PRHeadSHA(ctx context.Context, repo string, prNumber int) (string, error) {
+	path := fmt.Sprintf("repos/%s/pulls/%d", repo, prNumber)
+	out, err := APIGet(ctx, path, ".head.sha")
+	if err != nil {
+		return "", fmt.Errorf("gh.PRHeadSHA %s/%d: %w", repo, prNumber, err)
+	}
+	sha := strings.TrimSpace(out)
+	if sha == "" {
+		return "", fmt.Errorf("gh.PRHeadSHA %s/%d: empty sha", repo, prNumber)
+	}
+	return sha, nil
+}
+
+// PRHeadRef returns the head branch name of the PR (the local ref name
+// we push to). For fork PRs this is the branch name on the fork; gh pr
+// checkout sets up the remote so `git push origin <ref>` works.
+func PRHeadRef(ctx context.Context, repo string, prNumber int) (string, error) {
+	path := fmt.Sprintf("repos/%s/pulls/%d", repo, prNumber)
+	out, err := APIGet(ctx, path, ".head.ref")
+	if err != nil {
+		return "", fmt.Errorf("gh.PRHeadRef %s/%d: %w", repo, prNumber, err)
+	}
+	ref := strings.TrimSpace(out)
+	if ref == "" {
+		return "", fmt.Errorf("gh.PRHeadRef %s/%d: empty ref", repo, prNumber)
+	}
+	return ref, nil
+}
+
+// PRCheckout checks out the PR's head into the cloned repo. Wraps
+// `gh pr checkout <num>` which handles fork PRs transparently by
+// creating a remote and tracking branch.
+func PRCheckout(ctx context.Context, repoDir string, prNumber int) error {
+	if _, err := lib.MustSh(ctx, repoDir, "gh", "pr", "checkout", strconv.Itoa(prNumber)); err != nil {
+		return fmt.Errorf("gh.PRCheckout #%d in %s: %w", prNumber, repoDir, err)
+	}
+	return nil
+}
+
+// PRBaseRef returns the base (target) branch name of the PR.
+func PRBaseRef(ctx context.Context, repo string, prNumber int) (string, error) {
+	path := fmt.Sprintf("repos/%s/pulls/%d", repo, prNumber)
+	out, err := APIGet(ctx, path, ".base.ref")
+	if err != nil {
+		return "", fmt.Errorf("gh.PRBaseRef %s/%d: %w", repo, prNumber, err)
+	}
+	ref := strings.TrimSpace(out)
+	if ref == "" {
+		return "", fmt.Errorf("gh.PRBaseRef %s/%d: empty ref", repo, prNumber)
+	}
+	return ref, nil
+}
+
+// PRMergeableState returns the GitHub mergeable_state of the PR.
+// Possible values per the REST API: clean | dirty | unstable | behind
+// | blocked | has_hooks | unknown. Returns "" when the API field is
+// null or "unknown" (still being computed) — callers should treat that
+// as "no actionable signal yet" and skip mergeability checks for this
+// iteration.
+func PRMergeableState(ctx context.Context, repo string, prNumber int) (string, error) {
+	path := fmt.Sprintf("repos/%s/pulls/%d", repo, prNumber)
+	out, err := APIGet(ctx, path, ".mergeable_state")
+	if err != nil {
+		return "", fmt.Errorf("gh.PRMergeableState %s/%d: %w", repo, prNumber, err)
+	}
+	s := strings.TrimSpace(out)
+	if s == "null" || s == "unknown" {
+		return "", nil
+	}
+	return s, nil
+}

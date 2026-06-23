@@ -15,6 +15,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	restate "github.com/restatedev/sdk-go"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/trento-project/trento-workflows/internal/activities/fs"
 	"github.com/trento-project/trento-workflows/internal/activities/gh"
 	"github.com/trento-project/trento-workflows/internal/activities/git"
+	"github.com/trento-project/trento-workflows/internal/workflows/fixprci"
 )
 
 // WorkflowName is the Restate service identifier.
@@ -266,8 +268,41 @@ func backportOnePR(
 		return "", false
 	}
 	url := findOrCreateBackportPR(ctx, repo, pr, branch, next, prTag)
+	if num, ok := parsePRNumberFromURL(url); ok {
+		spawnFixPRCI(ctx, repo, num)
+	}
 	detach(ctx, workDir, prTag)
 	return url, true
+}
+
+// spawnFixPRCIDelay is how long Restate waits before actually starting
+// the fix-pr-ci workflow for a newly-opened backport PR. The delay
+// gives GitHub Actions time to schedule the PR's CI runs — querying
+// too eagerly would see zero runs and conclude "green" prematurely.
+const spawnFixPRCIDelay = time.Minute
+
+// spawnFixPRCI fires the trento.fix-pr-ci workflow on (repo, prNumber)
+// as a detached, delay-scheduled invocation. The patch-release workflow
+// does NOT wait for fix-pr-ci to complete — it may run for hours,
+// fixing CI on the new backport PR independently. Each PR gets its own
+// virtual-object key, so fix-pr-ci runs for different backports proceed
+// in parallel.
+//
+// Restate's `WithDelay` queues the invocation server-side, so this
+// returns immediately and patch-release continues to the next backport
+// without blocking on the 1-minute warmup.
+//
+// Returns nothing: spawning is best-effort. The backport PR being
+// opened is the primary deliverable; if Restate rejects the send
+// (e.g. duplicate key already in flight), the user can re-run
+// fix-pr-ci manually with the same inputs.
+func spawnFixPRCI(ctx restate.Context, repo string, prNumber int) {
+	key := fmt.Sprintf("%s#%d", repo, prNumber)
+	_ = restate.WorkflowSend(ctx, fixprci.WorkflowName, key, "Run").
+		Send(
+			fixprci.Input{Repo: repo, PRNumber: prNumber},
+			restate.WithDelay(spawnFixPRCIDelay),
+		)
 }
 
 // alreadyBackported returns (url, true) if there is already a MERGED PR

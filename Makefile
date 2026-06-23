@@ -226,3 +226,18 @@ wf-cancel: ## Gracefully cancel a running workflow: WF=<short> KEY=<key>
 wf-kill: ## Force-kill a workflow (no cleanup): WF=<short> KEY=<key>
 	$(call _need_wf_key)
 	@docker exec $(RESTATE_CONTAINER) restate -y inv kill "$(SERVICE)/$(KEY)"
+
+## --- fix-pr-ci dedicated wrapper ---
+# Watches a PR's CI, classifies failures (flaky | bug | infra | unfixable),
+# reruns flakies, asks Claude to fix bugs autonomously, commits fixups,
+# pushes, and loops until green or exhausted. Defaults: MaxAttempts=5,
+# MaxIterations=15, CleanupOnExit=false. To override, invoke wf-run
+# directly with a richer INPUT.
+
+.PHONY: fix-pr-ci
+
+fix-pr-ci: ## Watch a PR's CI and fix iteratively. REPO=owner/name PR=N
+	@test -n "$(REPO)" || { echo 'usage: make fix-pr-ci REPO=owner/name PR=<number>'; exit 1; }
+	@test -n "$(PR)"   || { echo 'usage: make fix-pr-ci REPO=owner/name PR=<number>'; exit 1; }
+	@$(MAKE) wf-run WF=fix-pr-ci KEY=$(subst /,_,$(REPO))_pr$(PR) \
+		INPUT='{"repo":"$(REPO)","prNumber":$(PR)}'
