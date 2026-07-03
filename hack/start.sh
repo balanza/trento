@@ -319,7 +319,7 @@ for svc in "${build_services[@]:-}"; do
   esac
 done
 
-for svc in "${trento_services[@]:-}"; do
+for svc in "${trento_services[@]+"${trento_services[@]}"}"; do
   image="$(service_image "$svc")"
   ctx="${PROJECT_ROOT}/${svc}"
 
@@ -484,10 +484,10 @@ if [[ -n "$mapping" ]]; then
   host="${mapping%:*}"
   port="${mapping##*:}"
   [[ "$host" == "0.0.0.0" ]] && host="localhost"
-  final_url="http://${host}:${port}/"
+  final_url="https://${host}:${port}/"
 elif [[ "$(uname -s)" == "Linux" ]]; then
   lb_ip="$(kubectl get svc -n kube-system traefik -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
-  [[ -n "$lb_ip" ]] && final_url="http://${lb_ip}/"
+  [[ -n "$lb_ip" ]] && final_url="https://${lb_ip}/"
 fi
 
 echo ">> done"
