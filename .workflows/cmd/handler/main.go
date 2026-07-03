@@ -10,6 +10,7 @@ import (
 	"github.com/restatedev/sdk-go/server"
 
 	"github.com/trento-project/trento-workflows/internal/lib"
+	"github.com/trento-project/trento-workflows/internal/workflows/dependabotsweep"
 	"github.com/trento-project/trento-workflows/internal/workflows/fixprci"
 	"github.com/trento-project/trento-workflows/internal/workflows/patchrelease"
 	"github.com/trento-project/trento-workflows/internal/workflows/testonobs"
@@ -28,7 +29,9 @@ func main() {
 		Bind(testonobs.RegisterSubmoduleService()).
 		Bind(patchrelease.Register()).
 		Bind(patchrelease.RegisterRepoService()).
-		Bind(fixprci.Register())
+		Bind(fixprci.Register()).
+		Bind(dependabotsweep.Register()).
+		Bind(dependabotsweep.RegisterRepoService())
 
 	log.Info("starting handler", "addr", addr)
 	if err := endpoint.Start(context.Background(), addr); err != nil {
