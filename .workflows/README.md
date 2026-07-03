@@ -52,3 +52,20 @@ restate-server &
 restate deployments register http://localhost:9080
 restate workflow run trento.test-on-obs --json '{"fixIterate":"off","maxAttempts":3}'
 ```
+
+## Dependabot sweep
+
+After a batch of Dependabot PRs lands, you can sweep the backlog into
+the next patch release without leaving the terminal:
+
+```
+make dependabot-sweep-dry REPOS=web,wanda   # preview what would merge
+make dependabot-sweep REPOS=web,wanda       # actually merge
+```
+
+The `-dry` variant skips the `gh pr merge` step but still lets
+`fix-pr-ci` push fixup commits. The run returns a per-repo
+`RepoReport` and a per-PR `PROutcome` table you can sanity-check
+before running the real sweep. See
+`.superpowers/specs/2026-07-03-dependabot-sweep-workflow-design.md`
+for the design rationale and the input/output schema.
