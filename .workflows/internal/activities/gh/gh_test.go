@@ -40,3 +40,17 @@ func TestParseJobsForRun(t *testing.T) {
 	assert.Len(t, got[0].Steps, 2)
 	assert.Equal(t, "failure", got[0].Steps[1].Conclusion)
 }
+
+func TestParseMilestonesJSON(t *testing.T) {
+	raw := `[
+      {"number":7,"title":"2.4.7","open_issues":3,"closed_issues":0},
+      {"number":8,"title":"2.4.8","open_issues":0,"closed_issues":0}
+    ]`
+	got, err := parseMilestonesJSON([]byte(raw))
+	assert.NoError(t, err)
+	assert.Len(t, got, 2)
+	assert.Equal(t, int64(7), got[0].Number)
+	assert.Equal(t, "2.4.7", got[0].Title)
+	assert.Equal(t, int64(8), got[1].Number)
+	assert.Equal(t, "2.4.8", got[1].Title)
+}

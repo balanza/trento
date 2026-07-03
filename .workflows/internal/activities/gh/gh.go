@@ -380,3 +380,114 @@ func PRMergeableState(ctx context.Context, repo string, prNumber int) (string, e
 	}
 	return s, nil
 }
+
+// --- PR merge ---
+
+// PRMergeMethod is the merge-button strategy.
+type PRMergeMethod string
+
+const (
+	PRMergeMethodMerge  PRMergeMethod = "merge"
+	PRMergeMethodSquash PRMergeMethod = "squash"
+	PRMergeMethodRebase PRMergeMethod = "rebase"
+)
+
+// PRMerge merges the given PR using the requested strategy. Wraps
+// `gh pr merge <num> --repo <r> --<method> --delete-branch`.
+// --delete-branch cleans up the Dependabot head after merge (matches
+// what the GitHub UI does when a maintainer merges a Dependabot PR).
+func PRMerge(ctx context.Context, repo string, prNumber int, method PRMergeMethod) error {
+	if _, err := lib.MustSh(ctx, "",
+		"gh", "pr", "merge", strconv.Itoa(prNumber),
+		"--repo", repo,
+		"--"+string(method),
+		"--delete-branch",
+	); err != nil {
+		return fmt.Errorf("gh.PRMerge %s/%d: %w", repo, prNumber, err)
+	}
+	return nil
+}
+
+// --- PR milestone ---
+
+// PRSetMilestone assigns a milestone to the PR. Wraps
+// `gh pr edit <num> --repo <r> --milestone <title>`. The milestone
+// must already exist — call MilestoneEnsure first.
+func PRSetMilestone(ctx context.Context, repo string, prNumber int, milestone string) error {
+	if _, err := lib.MustSh(ctx, "",
+		"gh", "pr", "edit", strconv.Itoa(prNumber),
+		"--repo", repo,
+		"--milestone", milestone,
+	); err != nil {
+		return fmt.Errorf("gh.PRSetMilestone %s/%d: %w", repo, prNumber, err)
+	}
+	return nil
+}
+
+// Milestone is one milestone in the repo's list.
+type Milestone struct {
+	Number int64
+	Title  string
+}
+
+type rawMilestone struct {
+	Number int64  `json:"number"`
+	Title  string `json:"title"`
+}
+
+func parseMilestonesJSON(b []byte) ([]Milestone, error) {
+	var raws []rawMilestone
+	if err := json.Unmarshal(b, &raws); err != nil {
+		return nil, fmt.Errorf("parseMilestonesJSON: %w", err)
+	}
+	out := make([]Milestone, 0, len(raws))
+	for _, r := range raws {
+		out = append(out, Milestone{Number: r.Number, Title: r.Title})
+	}
+	return out, nil
+}
+
+// MilestoneEnsure creates the milestone if it does not exist. Wraps
+// `gh api repos/<r>/milestones` for the pre-check and
+// `gh api repos/<r>/milestones -X POST -f title=<t>` for the create
+// path. Idempotent. Returns the milestone's numeric ID.
+func MilestoneEnsure(ctx context.Context, repo, title string) (int64, error) {
+	existing, err := listMilestones(ctx, repo)
+	if err != nil {
+		return 0, fmt.Errorf("gh.MilestoneEnsure %s/%q: list: %w", repo, title, err)
+	}
+	for _, m := range existing {
+		if m.Title == title {
+			return m.Number, nil
+		}
+	}
+	if _, err := lib.MustSh(ctx, "",
+		"gh", "api", "repos/"+repo+"/milestones",
+		"-X", "POST",
+		"-f", "title="+title,
+	); err != nil {
+		return 0, fmt.Errorf("gh.MilestoneEnsure %s/%q: create: %w", repo, title, err)
+	}
+	// Re-list to discover the assigned number.
+	created, err := listMilestones(ctx, repo)
+	if err != nil {
+		return 0, fmt.Errorf("gh.MilestoneEnsure %s/%q: re-list: %w", repo, title, err)
+	}
+	for _, m := range created {
+		if m.Title == title {
+			return m.Number, nil
+		}
+	}
+	return 0, fmt.Errorf("gh.MilestoneEnsure %s/%q: not found after create", repo, title)
+}
+
+func listMilestones(ctx context.Context, repo string) ([]Milestone, error) {
+	out, err := lib.MustSh(ctx, "", "gh", "api", "repos/"+repo+"/milestones?per_page=100&state=all")
+	if err != nil {
+		return nil, fmt.Errorf("gh.listMilestones %s: %w", repo, err)
+	}
+	if strings.TrimSpace(out) == "" {
+		return nil, nil
+	}
+	return parseMilestonesJSON([]byte(out))
+}
