@@ -234,10 +234,37 @@ wf-kill: ## Force-kill a workflow (no cleanup): WF=<short> KEY=<key>
 # MaxIterations=15, CleanupOnExit=false. To override, invoke wf-run
 # directly with a richer INPUT.
 
-.PHONY: fix-pr-ci
+.PHONY: fix-pr-ci dependabot-sweep dependabot-sweep-dry
 
 fix-pr-ci: ## Watch a PR's CI and fix iteratively. REPO=owner/name PR=N
 	@test -n "$(REPO)" || { echo 'usage: make fix-pr-ci REPO=owner/name PR=<number>'; exit 1; }
 	@test -n "$(PR)"   || { echo 'usage: make fix-pr-ci REPO=owner/name PR=<number>'; exit 1; }
 	@$(MAKE) wf-run WF=fix-pr-ci KEY=$(subst /,_,$(REPO))_pr$(PR) \
 		INPUT='{"repo":"$(REPO)","prNumber":$(PR)}'
+
+## --- dependabot-sweep dedicated wrapper ---
+# Enumerates open Dependabot PRs per submodule, drives each to green via
+# trento.fix-pr-ci, attaches the next-patch-version milestone, and
+# squash-merges. Repos in parallel, PRs in a single repo sequential.
+# Use dependabot-sweep-dry for the first few real runs: it lets
+# fix-pr-ci run end-to-end and may push fixup commits, but skips the
+# squash-merge. Review the Output.report to sanity-check what would
+# merge before re-running without -dry.
+#
+# Optional filter: REPOS=web,wanda (default = all submodules).
+# MaxIterationsPerPR defaults to 10 inside the workflow.
+
+# SWEEP_REPOS_JSON: REPOS=web,wanda -> ["web","wanda"]; empty -> [].
+# Evaluated lazily via recursive $(shell) so the JSON is a literal
+# string in the recipe (no shell variable interpolation needed at run
+# time). Recursive assignment (not :=) so each invocation re-runs the
+# shell with the current REPOS value.
+SWEEP_REPOS_JSON = $(if $(REPOS),$(shell printf '%s' '$(REPOS)' | awk -F, '{printf "["; for (i=1;i<=NF;i++) printf "%s\"%s\"", (i>1?",":""), $$i; print "]"}'),[])
+
+dependabot-sweep: ## Sweep open Dependabot PRs and merge. REPOS=web,wanda (optional)
+	@$(MAKE) wf-run WF=dependabot-sweep KEY=sweep-$(shell date +%s) \
+		INPUT='{"maxIterationsPerPR":10,"submodules":$(SWEEP_REPOS_JSON)}'
+
+dependabot-sweep-dry: ## Sweep in dry-run mode (skip merges). REPOS=... (optional)
+	@$(MAKE) wf-run WF=dependabot-sweep KEY=sweep-dry-$(shell date +%s) \
+		INPUT='{"maxIterationsPerPR":10,"submodules":$(SWEEP_REPOS_JSON),"dryRun":true}'
