@@ -9,10 +9,8 @@
 package patchrelease
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -23,6 +21,7 @@ import (
 	"github.com/trento-project/trento-workflows/internal/activities/fs"
 	"github.com/trento-project/trento-workflows/internal/activities/gh"
 	"github.com/trento-project/trento-workflows/internal/activities/git"
+	"github.com/trento-project/trento-workflows/internal/workflows/common/release"
 	"github.com/trento-project/trento-workflows/internal/workflows/fixprci"
 )
 
@@ -41,7 +40,6 @@ const (
 	baseMain         = "main"
 	originReleaseRef = "origin/release"
 	prListPageMax    = 1000
-	versionParts     = 3
 )
 
 // Register returns the Restate workflow definition. The handler binary
@@ -62,12 +60,12 @@ func Register() restate.ServiceDefinition {
 func Run(ctx restate.WorkflowContext, in Input) (Output, error) {
 	in = applyDefaults(in)
 
-	repoRoot, err := resolveRepoRoot(ctx)
+	repoRoot, err := release.ResolveRepoRoot(ctx)
 	if err != nil {
 		return Output{}, err
 	}
 
-	repos, err := resolveRepos(ctx, repoRoot, in.Submodules)
+	repos, err := release.ResolveRepos(ctx, repoRoot, in.Submodules)
 	if err != nil {
 		return Output{}, err
 	}
@@ -117,7 +115,7 @@ func processRepo(ctx restate.Context, repo string) RepoReport {
 		Backports: nil, VersionBumpPR: "", Failed: nil,
 	}
 
-	current, next, ok := resolveVersions(ctx, repo, &report)
+	current, next, ok := release.ResolveVersions(ctx, repo)
 	if !ok {
 		return report
 	}
@@ -145,26 +143,6 @@ func processRepo(ctx restate.Context, repo string) RepoReport {
 	return report
 }
 
-// resolveVersions reads the release-branch VERSION and bumps the patch
-// component. Returns (current, next, ok=false) if either step fails.
-func resolveVersions(ctx restate.Context, repo string, _ *RepoReport) (string, string, bool) {
-	current, err := runT(ctx, "readVersion:"+repo, func(rctx restate.RunContext) (string, error) {
-		raw, ghErr := gh.APIGet(rctx, "repos/"+repo+"/contents/VERSION?ref=release", ".content")
-		if ghErr != nil {
-			return "", fmt.Errorf("gh api VERSION: %w", ghErr)
-		}
-		return decodeBase64Trim(raw)
-	})
-	if err != nil {
-		return "", "", false
-	}
-	next, err := bumpPatch(current)
-	if err != nil {
-		return "", "", false
-	}
-	return current, next, true
-}
-
 // ensureLabels creates the two labels the workflow tags PRs with. Errors
 // are ignored — `gh label create --force` is idempotent and benign.
 func ensureLabels(ctx restate.Context, repo string) {
@@ -179,7 +157,7 @@ func ensureLabels(ctx restate.Context, repo string) {
 // listMilestonePRs returns the merged main PRs whose milestone matches
 // `next`.
 func listMilestonePRs(ctx restate.Context, repo, next string) ([]gh.PR, error) {
-	return runT(ctx, "prList:"+repo, func(rctx restate.RunContext) ([]gh.PR, error) {
+	return release.RunT(ctx, "prList:"+repo, func(rctx restate.RunContext) ([]gh.PR, error) {
 		return gh.PRList(rctx, gh.PRListOpts{
 			Repo:   repo,
 			State:  "merged",
@@ -194,7 +172,7 @@ func listMilestonePRs(ctx restate.Context, repo, next string) ([]gh.PR, error) {
 // prepareClone clones the repo into a fresh temp dir and fetches the
 // release branch.
 func prepareClone(ctx restate.Context, repo string) (string, bool) {
-	workDir, err := runT(ctx, "mktemp:"+repo, func(rctx restate.RunContext) (string, error) {
+	workDir, err := release.RunT(ctx, "mktemp:"+repo, func(rctx restate.RunContext) (string, error) {
 		return fs.MkTempDir(rctx, "trento-patch-release-")
 	})
 	if err != nil {
@@ -308,7 +286,7 @@ func spawnFixPRCI(ctx restate.Context, repo string, prNumber int) {
 // alreadyBackported returns (url, true) if there is already a MERGED PR
 // on the backport branch.
 func alreadyBackported(ctx restate.Context, repo, branch, prTag string) (string, bool) {
-	merged, err := runT(ctx, "checkMerged:"+prTag, func(rctx restate.RunContext) ([]gh.PR, error) {
+	merged, err := release.RunT(ctx, "checkMerged:"+prTag, func(rctx restate.RunContext) ([]gh.PR, error) {
 		return gh.PRList(rctx, gh.PRListOpts{
 			Repo: repo, State: "merged", Base: baseRelease, Head: branch,
 			Search: "", Limit: 1,
@@ -341,7 +319,7 @@ func pickAndMaybeResolve(
 	workDir, branch, prTag string,
 	report *RepoReport,
 ) bool {
-	result, pickErr := runT(ctx, "cherryPick:"+prTag, func(rctx restate.RunContext) (pickResult, error) {
+	result, pickErr := release.RunT(ctx, "cherryPick:"+prTag, func(rctx restate.RunContext) (pickResult, error) {
 		cherryErr := git.CherryPick(rctx, workDir, pr.MergeCommitOID)
 		if errors.Is(cherryErr, git.ErrCherryPickConflict) {
 			return pickConflict, nil
@@ -393,7 +371,7 @@ func findOrCreateBackportPR(
 	ctx restate.Context,
 	repo string, pr gh.PR, branch, next, prTag string,
 ) string {
-	existing, _ := runT(ctx, "checkOpen:"+prTag, func(rctx restate.RunContext) ([]gh.PR, error) {
+	existing, _ := release.RunT(ctx, "checkOpen:"+prTag, func(rctx restate.RunContext) ([]gh.PR, error) {
 		return gh.PRList(rctx, gh.PRListOpts{
 			Repo: repo, State: "open", Base: baseRelease, Head: branch,
 			Search: "", Limit: 1,
@@ -402,7 +380,7 @@ func findOrCreateBackportPR(
 	if len(existing) > 0 {
 		return existing[0].URL
 	}
-	url, _ := runT(ctx, "create:"+prTag, func(rctx restate.RunContext) (string, error) {
+	url, _ := release.RunT(ctx, "create:"+prTag, func(rctx restate.RunContext) (string, error) {
 		return gh.PRCreate(rctx, gh.PRCreateOpts{
 			Repo:  repo,
 			Title: pr.Title,
@@ -423,7 +401,7 @@ func resolveConflictWithAI(
 	repo string, pr gh.PR, workDir, branch string,
 ) bool {
 	tag := fmt.Sprintf("%s:%d", repo, pr.Number)
-	if _, err := runT(ctx, "claude:resolve:"+tag, func(rctx restate.RunContext) (claude.Response, error) {
+	if _, err := release.RunT(ctx, "claude:resolve:"+tag, func(rctx restate.RunContext) (claude.Response, error) {
 		return claude.Invoke(rctx, claude.Request{
 			Prompt:       buildResolveConflictPrompt(repo, pr, branch),
 			Files:        nil,
@@ -433,7 +411,7 @@ func resolveConflictWithAI(
 	}); err != nil {
 		return false
 	}
-	inProgress, err := runT(ctx, "cherryPickInProgress:"+tag, func(rctx restate.RunContext) (bool, error) {
+	inProgress, err := release.RunT(ctx, "cherryPickInProgress:"+tag, func(rctx restate.RunContext) (bool, error) {
 		return git.CherryPickInProgress(rctx, workDir)
 	})
 	if err != nil {
@@ -460,7 +438,7 @@ func createVersionBumpPR(
 	if url, ok := updateExistingVersionBumpPR(ctx, repo, branch, body, tag); ok {
 		return url
 	}
-	url, _ := runT(ctx, "create:"+tag, func(rctx restate.RunContext) (string, error) {
+	url, _ := release.RunT(ctx, "create:"+tag, func(rctx restate.RunContext) (string, error) {
 		return gh.PRCreate(rctx, gh.PRCreateOpts{
 			Repo:  repo,
 			Title: "Trigger release " + next,
@@ -513,7 +491,7 @@ func updateExistingVersionBumpPR(
 	ctx restate.Context,
 	repo, branch, body, tag string,
 ) (string, bool) {
-	existing, _ := runT(ctx, "checkOpen:"+tag, func(rctx restate.RunContext) ([]gh.PR, error) {
+	existing, _ := release.RunT(ctx, "checkOpen:"+tag, func(rctx restate.RunContext) ([]gh.PR, error) {
 		return gh.PRList(rctx, gh.PRListOpts{
 			Repo: repo, State: "open", Base: baseRelease, Head: branch,
 			Search: "", Limit: 1,
@@ -531,64 +509,6 @@ func updateExistingVersionBumpPR(
 
 // --- pure helpers ---
 
-func resolveRepoRoot(ctx restate.Context) (string, error) {
-	return runT(ctx, "resolveRepoRoot", func(_ restate.RunContext) (string, error) {
-		if rr := os.Getenv("TRENTO_REPO_ROOT"); rr != "" {
-			return rr, nil
-		}
-		return "..", nil
-	})
-}
-
-func resolveRepos(ctx restate.Context, repoRoot string, filter []string) ([]string, error) {
-	all, err := runT(ctx, "submodulesFromGitmodules", func(rctx restate.RunContext) ([]string, error) {
-		return git.SubmodulesFromGitmodules(rctx, repoRoot+"/.gitmodules")
-	})
-	if err != nil {
-		return nil, err
-	}
-	if len(filter) == 0 {
-		return all, nil
-	}
-	want := make(map[string]struct{}, len(filter))
-	for _, f := range filter {
-		want[f] = struct{}{}
-	}
-	out := make([]string, 0, len(filter))
-	for _, repo := range all {
-		_, name, ok := splitOwnerName(repo)
-		if !ok {
-			continue
-		}
-		if _, hit := want[name]; hit {
-			out = append(out, repo)
-		}
-	}
-	return out, nil
-}
-
-// splitOwnerName splits "owner/name" into its parts. Returns ok=false
-// when the input lacks a single slash separator.
-func splitOwnerName(repo string) (string, string, bool) {
-	idx := strings.Index(repo, "/")
-	if idx <= 0 || idx == len(repo)-1 {
-		return "", "", false
-	}
-	return repo[:idx], repo[idx+1:], true
-}
-
-func bumpPatch(v string) (string, error) {
-	parts := strings.Split(v, ".")
-	if len(parts) != versionParts {
-		return "", fmt.Errorf("not a semver: %q", v)
-	}
-	patch, err := strconv.Atoi(parts[2])
-	if err != nil {
-		return "", fmt.Errorf("invalid patch in %q: %w", v, err)
-	}
-	return fmt.Sprintf("%s.%s.%d", parts[0], parts[1], patch+1), nil
-}
-
 // parsePRNumberFromURL extracts N from a GitHub PR URL like
 // https://github.com/owner/repo/pull/N.
 func parsePRNumberFromURL(url string) (int, bool) {
@@ -601,14 +521,6 @@ func parsePRNumberFromURL(url string) (int, bool) {
 		return 0, false
 	}
 	return n, true
-}
-
-func decodeBase64Trim(s string) (string, error) {
-	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s))
-	if err != nil {
-		return "", fmt.Errorf("base64 decode: %w", err)
-	}
-	return strings.TrimSpace(string(raw)), nil
 }
 
 func buildResolveConflictPrompt(repo string, pr gh.PR, branch string) string {
