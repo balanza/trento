@@ -476,6 +476,25 @@ func parseMilestonesJSON(b []byte) ([]Milestone, error) {
 	return out, nil
 }
 
+// PRApprove approves the PR as the currently-authenticated gh user.
+// Wraps `gh pr review <num> --repo <r> --approve`. The CLI re-uses or
+// overrides any pending review from the same user, so calling it on
+// an already-approved PR is a no-op (or returns a benign "already
+// reviewed" error from the server, which we surface). Use this for
+// the dependabot-sweep's approval-recovery path: fix-pr-ci returns
+// green but the PR's mergeable_state is "blocked" (non-CI branch
+// protection requirement) — most commonly "required reviews".
+func PRApprove(ctx context.Context, repo string, prNumber int) error {
+	if _, err := lib.MustSh(ctx, "",
+		"gh", "pr", "review", strconv.Itoa(prNumber),
+		"--repo", repo,
+		"--approve",
+	); err != nil {
+		return fmt.Errorf("gh.PRApprove %s/%d: %w", repo, prNumber, err)
+	}
+	return nil
+}
+
 // MilestoneEnsure creates the milestone if it does not exist. Wraps
 // `gh api repos/<r>/milestones` for the pre-check and
 // `gh api repos/<r>/milestones -X POST -f title=<t>` for the create
