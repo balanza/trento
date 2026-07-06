@@ -288,14 +288,17 @@ func JobsForRun(ctx context.Context, repo string, runID int64) ([]WorkflowJob, e
 // presigned-URL redirect transparently.
 // Wraps `gh api repos/<repo>/actions/jobs/<jobID>/logs`.
 //
-// 404 handling: GitHub returns HTTP 404 (BlobNotFound) for jobs whose
-// log blob has been deleted or never uploaded (typical for cancelled
-// jobs that exited before any step ran). Callers that work through a
-// per-job loop already skip such entries via the surrounding
-// `if err != nil { continue }` in fixprci, but Restate retries the
-// failing activity 13 times before the workflow sees the error - each
-// retry re-executes `gh api` against GitHub. Returning (empty, nil)
-// on 404 collapses the 13 retries to a single no-op activity call,
+// No-log-available handling: GitHub returns HTTP 404 (BlobNotFound)
+// for jobs whose log blob has been deleted or never uploaded (typical
+// for cancelled jobs that exited before any step ran), and the
+// presigned-URL redirect to productionresultssa*.blob.core.windows.net
+// is occasionally flaky (connection refused, connection reset, EOF).
+// Callers that work through a per-job loop already skip entries with
+// an empty log via the surrounding `if err != nil { continue }` in
+// fixprci, but Restate retries a failing activity 13 times before the
+// workflow sees the error — each retry re-executes `gh api` against
+// GitHub. Returning (empty, nil) on any of the "log not available"
+// categories collapses those retries to a single no-op activity call,
 // which unblocks the workflow immediately. The empty log is appended
 // to the bundle as a zero-byte entry; the analyze-logs prompt ignores
 // entries with empty logs.
@@ -309,7 +312,12 @@ func JobLogs(ctx context.Context, repo string, jobID int64) (string, error) {
 		// 404 = blob not found (deleted or never uploaded). Treat as
 		// "no log available" and return empty + nil. Any other
 		// non-zero exit is a real failure and propagates.
-		if strings.Contains(stderr, "HTTP 404") || strings.Contains(stdout, "BlobNotFound") {
+		combined := stdout + stderr
+		if strings.Contains(combined, "HTTP 404") ||
+			strings.Contains(combined, "BlobNotFound") ||
+			strings.Contains(combined, "connection refused") ||
+			strings.Contains(combined, "connection reset") ||
+			strings.Contains(combined, "EOF") {
 			return "", nil
 		}
 		return "", fmt.Errorf("gh.JobLogs %s/%d: gh exited %d: %s", repo, jobID, code, strings.TrimSpace(stderr))
