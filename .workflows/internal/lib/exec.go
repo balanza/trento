@@ -47,3 +47,42 @@ func MustSh(ctx context.Context, dir string, argv ...string) (string, error) {
 	}
 	return stdout, nil
 }
+
+// ShStdin is Sh with `stdin` piped to the child process. Use this when
+// the data you'd otherwise pass as a flag value (a long prompt, a
+// config blob) exceeds the OS argv limit (E2BIG). Returns the same
+// (stdout, stderr, exitCode, err) shape as Sh.
+func ShStdin(ctx context.Context, dir, stdin string, argv ...string) (string, string, int, error) {
+	if len(argv) == 0 {
+		return "", "", -1, errors.New("sh: empty argv")
+	}
+	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...) //nolint:gosec // dev tool, args are caller-controlled
+	if dir != "" {
+		cmd.Dir = dir
+	}
+	cmd.Stdin = strings.NewReader(stdin)
+	var stdout, stderr strings.Builder
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err == nil {
+		return stdout.String(), stderr.String(), 0, nil
+	}
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return stdout.String(), stderr.String(), exitErr.ExitCode(), nil
+	}
+	return stdout.String(), stderr.String(), -1, fmt.Errorf("sh %s: %w", argv[0], err)
+}
+
+// MustShStdin is MustSh with stdin piped to the child.
+func MustShStdin(ctx context.Context, dir, stdin string, argv ...string) (string, error) {
+	stdout, stderr, code, err := ShStdin(ctx, dir, stdin, argv...)
+	if err != nil {
+		return stdout, err
+	}
+	if code != 0 {
+		return stdout, fmt.Errorf("%s exited %d: %s", argv[0], code, strings.TrimSpace(stderr))
+	}
+	return stdout, nil
+}

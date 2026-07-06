@@ -37,6 +37,11 @@ type Response struct {
 // glob.
 func Invoke(ctx context.Context, req Request) (Response, error) {
 	prompt := buildPrompt(req)
+	// Build the argv WITHOUT the prompt. The prompt is fed via stdin
+	// to bypass the OS argv limit (E2BIG) that `claude` hits with
+	// long log bundles — the analyze-logs prompt can run into the
+	// 2 MiB ARG_MAX on a single PR with many failed jobs. claude
+	// accepts the prompt from stdin when no positional arg is given.
 	args := []string{"claude"}
 	if len(req.AllowedTools) > 0 {
 		args = append(args, "--allowedTools", strings.Join(req.AllowedTools, ","))
@@ -44,9 +49,9 @@ func Invoke(ctx context.Context, req Request) (Response, error) {
 	if req.Cwd != "" {
 		args = append(args, "--add-dir", req.Cwd)
 	}
-	args = append(args, "-p", prompt)
+	args = append(args, "--print")
 
-	out, err := lib.MustSh(ctx, req.Cwd, args...)
+	out, err := lib.MustShStdin(ctx, req.Cwd, prompt, args...)
 	if err != nil {
 		return Response{}, fmt.Errorf("claude.Invoke: %w", err)
 	}
