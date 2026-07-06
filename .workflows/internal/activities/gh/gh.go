@@ -287,13 +287,34 @@ func JobsForRun(ctx context.Context, repo string, runID int64) ([]WorkflowJob, e
 // JobLogs returns the raw log text for one job. gh follows the
 // presigned-URL redirect transparently.
 // Wraps `gh api repos/<repo>/actions/jobs/<jobID>/logs`.
+//
+// 404 handling: GitHub returns HTTP 404 (BlobNotFound) for jobs whose
+// log blob has been deleted or never uploaded (typical for cancelled
+// jobs that exited before any step ran). Callers that work through a
+// per-job loop already skip such entries via the surrounding
+// `if err != nil { continue }` in fixprci, but Restate retries the
+// failing activity 13 times before the workflow sees the error - each
+// retry re-executes `gh api` against GitHub. Returning (empty, nil)
+// on 404 collapses the 13 retries to a single no-op activity call,
+// which unblocks the workflow immediately. The empty log is appended
+// to the bundle as a zero-byte entry; the analyze-logs prompt ignores
+// entries with empty logs.
 func JobLogs(ctx context.Context, repo string, jobID int64) (string, error) {
 	path := fmt.Sprintf("repos/%s/actions/jobs/%d/logs", repo, jobID)
-	out, err := lib.MustSh(ctx, "", "gh", "api", path)
+	stdout, stderr, code, err := lib.Sh(ctx, "", "gh", "api", path)
 	if err != nil {
 		return "", fmt.Errorf("gh.JobLogs %s/%d: %w", repo, jobID, err)
 	}
-	return out, nil
+	if code != 0 {
+		// 404 = blob not found (deleted or never uploaded). Treat as
+		// "no log available" and return empty + nil. Any other
+		// non-zero exit is a real failure and propagates.
+		if strings.Contains(stderr, "HTTP 404") || strings.Contains(stdout, "BlobNotFound") {
+			return "", nil
+		}
+		return "", fmt.Errorf("gh.JobLogs %s/%d: gh exited %d: %s", repo, jobID, code, strings.TrimSpace(stderr))
+	}
+	return stdout, nil
 }
 
 // RunRerunFailed reruns only the failed jobs of one workflow run.
