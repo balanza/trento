@@ -10,11 +10,38 @@ readonly HOSTS_CHART_DIR="${PROJECT_ROOT}/container_fixtures/hosts/helm"
 readonly HOSTS_AGENT_DOCKERFILE="${PROJECT_ROOT}/container_fixtures/hosts/Dockerfile.agent"
 readonly HOSTS_FILES_DOCKERFILE="${PROJECT_ROOT}/container_fixtures/hosts/Dockerfile.filesystem"
 readonly HOSTS_AGENT_IMAGE="local/agent:dev"
-readonly HOSTS_SCENARIO="hana-scale-out"
-# Hosts to build for the scenario above. Keep in sync with
-# container_fixtures/hosts/helm/values.yaml#hosts.
-readonly HOSTS=(hana-s1-db1 hana-s2-db1 hana-s-mm)
+readonly HOSTS_FIXTURES_DIR="${PROJECT_ROOT}/container_fixtures/hosts"
 readonly HOSTS_RELEASE_NAME="host-fixtures"
+
+# Auto-discover scenarios: every subdirectory (excluding 'helm') under
+# container_fixtures/hosts/ is treated as a scenario.
+readonly HOSTS_SCENARIOS=($(find "${HOSTS_FIXTURES_DIR}" -mindepth 1 -maxdepth 1 -type d ! -name helm -printf '%f\n' | sort))
+
+if [[ ${#HOSTS_SCENARIOS[@]} -eq 0 ]]; then
+  die "No scenarios found in ${HOSTS_FIXTURES_DIR}"
+fi
+
+# Aggregate all hosts across every scenario, preserving scenario-host mapping.
+# ALL_HOSTS holds every host name (unique).  HOST_SCENARIO[host] records which
+# scenario a host belongs to (the first one if duplicated).
+ALL_HOSTS=()
+declare -A HOST_SCENARIO
+for scenario in "${HOSTS_SCENARIOS[@]}"; do
+  scenario_dir="${HOSTS_FIXTURES_DIR}/${scenario}"
+  for host_dir in "${scenario_dir}"/*/; do
+    [[ -d "$host_dir" ]] || continue
+    host="$(basename "$host_dir")"
+    if [[ -z "${HOST_SCENARIO[$host]+x}" ]]; then
+      ALL_HOSTS+=("$host")
+      HOST_SCENARIO["$host"]="$scenario"
+    fi
+  done
+done
+readonly ALL_HOSTS
+
+# Legacy alias for backward-compat with code that references $HOSTS
+readonly HOSTS=("${ALL_HOSTS[@]}")
+
 readonly TAG="dev"
 readonly REGISTRY_PREFIX="local"
 
@@ -32,9 +59,24 @@ usage() {
   cat <<EOF
 Usage: $(basename "$0") [options]
 
-Deploy the trento-server Helm chart against the active k3d cluster, configured
-to use the local images 'local/trento-{web,wanda,checks}:dev'. By default no
-images are built; pass --build to (re)build a subset before deploying.
+Deploy the trento-server Helm chart against the active k3d or k3s cluster,
+configured to use the local images 'local/trento-{web,wanda,checks}:dev'. By
+default no images are built; pass --build to (re)build a subset before deploying.
+
+Cluster types:
+  k3d  — docker-based, multi-cluster. Context name starts with 'k3d-'.
+         Images are loaded with 'k3d image import'.
+  k3s  — single-host (or multi-node) containerd-backed install. Detected via
+         a node kubelet version containing 'k3s'. Image loading is auto-detected:
+           * host install (/run/k3s/containerd/containerd.sock present):
+             'docker save | k3s ctr images import -' (sudo if not root).
+           * k3s-in-docker (no host socket): 'docker save | docker exec -i
+             <k3s-container> ctr ... images import -'. No host k3s binary or
+             PATH shim required.
+
+Host fixtures: all scenarios under container_fixtures/hosts/ are automatically
+discovered and deployed (each subdirectory = one scenario). The host-fixtures
+Helm release lists every host from every scenario in a single deployment.
 
 Options:
   --build <csv>          Comma-separated subset of services to (re)build
@@ -152,8 +194,38 @@ import_to_cluster() {
   if ! image_exists_locally "$image"; then
     return 0   # nothing to import; auto-build pass should have caught this
   fi
-  echo ">> importing ${image} into k3d cluster ${cluster}"
-  k3d image import "$image" -c "$cluster"
+  if [[ "${cluster_type:-}" == "k3s" ]]; then
+    echo ">> importing ${image} into k3s containerd"
+    # K3S_IMPORT_CMD was resolved once after cluster detection. It is either:
+    #   - host install:   `k3s ctr --connect-timeout 60s images import -`
+    #   - k3s-in-docker:  `docker exec -i <container> /bin/ctr --address ... --namespace k8s.io --connect-timeout 60s images import -`
+    # --connect-timeout 60s lets a busy containerd accept the dial (ctr's
+    # default 3s can surface as 'context deadline exceeded' under load), and
+    # the retry loop below adds backoff as belt-and-suspenders. sudo is only
+    # used for the host-install case when running as a non-root user (the
+    # socket is root-owned); it is never used for k3s-in-docker.
+    local attempt imported=0
+    for attempt in 1 2 3; do
+      if docker save "$image" | "${K3S_IMPORT_CMD[@]}" 2>&1; then
+        imported=1
+        break
+      fi
+      [[ "$attempt" -lt 3 ]] || break
+      echo ">> k3s ctr import attempt ${attempt} failed; retrying in $((attempt * 3))s" >&2
+      sleep $((attempt * 3))
+    done
+    if [[ "$imported" -ne 1 ]]; then
+      if [[ "${K3S_IMPORT_USE_SUDO}" == "true" ]] && command -v sudo >/dev/null 2>&1; then
+        echo ">> direct k3s ctr import failed after retries; host k3s socket detected, retrying with sudo" >&2
+        docker save "$image" | sudo "${K3S_IMPORT_CMD[@]}"
+      else
+        die "k3s ctr images import failed for ${image} after retries."
+      fi
+    fi
+  else
+    echo ">> importing ${image} into k3d cluster ${cluster}"
+    k3d image import "$image" -c "$cluster"
+  fi
 }
 
 cleanup_local_contracts() {
@@ -174,6 +246,15 @@ cleanup_local_contracts() {
     rm -rf "${dir}/${LOCAL_CONTRACTS_SENTINEL}"
   done
   PATCHED_CONSUMERS=()
+}
+
+cleanup_tmp_files() {
+  [[ -z "${TMP_HOSTS_VALUES:-}" ]] || rm -f "$TMP_HOSTS_VALUES"
+}
+
+cleanup_all() {
+  cleanup_tmp_files
+  cleanup_local_contracts
 }
 
 build_csv=""
@@ -234,10 +315,9 @@ fi
 
 require_cmd kubectl
 require_cmd helm
-# docker and k3d are needed unconditionally: the per-host files images are
-# always built and imported. Layer cache makes re-runs cheap.
+# docker is needed unconditionally: every image (trento services and the
+# per-host files images) is built with it. Layer cache makes re-runs cheap.
 require_cmd docker
-require_cmd k3d
 
 # If a prior `helm upgrade --install <name>` was interrupted (Ctrl-C, hook
 # timeout, CRD race, etc.) the release is left in `failed` status. The next
@@ -265,13 +345,68 @@ helm_clean_failed_release() {
   esac
 }
 
+# Detect the active cluster type. k3d contexts are named 'k3d-<cluster>'; for
+# anything else we fall back to a k3s heuristic (a node's kubelet version
+# contains 'k3s'). The cluster type governs how local images are loaded and
+# how the trento-web URL is derived at the end of the script.
 context="$(kubectl config current-context)"
+cluster_type=""
+cluster=""
 case "$context" in
-  k3d-*) cluster="${context#k3d-}" ;;
-  *) die "current kubectl context '$context' is not a k3d cluster (must start with 'k3d-')" ;;
+  k3d-*)
+    cluster_type="k3d"
+    cluster="${context#k3d-}"
+    require_cmd k3d
+    echo ">> using k3d cluster: ${cluster}"
+    ;;
+  *)
+    node_ver="$(kubectl get nodes -o jsonpath='{.items[0].status.nodeInfo.kubeletVersion}' 2>/dev/null || true)"
+    if [[ "$node_ver" == *k3s* ]]; then
+      cluster_type="k3s"
+      echo ">> using k3s cluster (context: ${context})"
+    else
+      die "current kubectl context '$context' is neither a k3d nor a k3s cluster (node kubelet version: '${node_ver:-unknown}')"
+    fi
+    ;;
 esac
+readonly cluster_type cluster
 
-echo ">> using k3d cluster: ${cluster}"
+# For k3s, resolve HOW local images are loaded into the cluster's containerd.
+# Two cases:
+#  (a) real host install: /run/k3s/containerd/containerd.sock exists on the
+#      host, so a host `k3s ctr` (or `sudo k3s ctr`) can reach it directly.
+#  (b) k3s-in-docker: k3s runs inside a privileged container (e.g. the
+#      rancher/k3s image); the host has no socket, so we `docker exec` into
+#      that container and drive its in-container ctr against its own socket.
+#      This needs NO `k3s` binary and NO PATH shim on the host — which matters
+#      because a host `k3s` binary (asdf, /usr/local/bin, ...) would otherwise
+#      dial the non-existent host socket and time out with
+#      'context deadline exceeded'.
+K3S_IMPORT_CMD=()
+K3S_IMPORT_USE_SUDO=false
+if [[ "$cluster_type" == "k3s" ]]; then
+  if [[ -S /run/k3s/containerd/containerd.sock ]]; then
+    command -v k3s >/dev/null 2>&1 \
+      || die "k3s cluster detected and host socket /run/k3s/containerd/containerd.sock is present, but no 'k3s' binary on PATH — install k3s or add it to PATH."
+    K3S_IMPORT_CMD=(k3s ctr --connect-timeout 60s images import -)
+    [[ "$(id -u)" -ne 0 ]] && K3S_IMPORT_USE_SUDO=true
+    echo ">> k3s image loading: host k3s containerd socket (/run/k3s/containerd/containerd.sock)"
+  else
+    K3S_CONTAINER="$(docker ps --format '{{.Names}}\t{{.Image}}' 2>/dev/null \
+      | awk -F'\t' '$2 ~ /rancher\/k3s/ {print $1; exit}')"
+    [[ -n "$K3S_CONTAINER" ]] \
+      || die "k3s cluster detected, but neither a host containerd socket (/run/k3s/containerd/containerd.sock) nor a running rancher/k3s docker container was found. If k3s runs in a container, start it ('docker ps | grep k3s'). If k3s runs on the host, install/start the k3s service so the socket appears."
+    docker exec "$K3S_CONTAINER" test -S /run/k3s/containerd/containerd.sock 2>/dev/null \
+      || die "found k3s container '$K3S_CONTAINER' but it has no /run/k3s/containerd/containerd.sock; is k3s healthy inside it? Check: docker logs $K3S_CONTAINER"
+    K3S_IMPORT_CMD=(docker exec -i "$K3S_CONTAINER" /bin/ctr \
+      --address /run/k3s/containerd/containerd.sock \
+      --namespace k8s.io \
+      --connect-timeout 60s \
+      images import -)
+    echo ">> k3s image loading: k3s-in-docker container '$K3S_CONTAINER' (no host k3s binary needed)"
+  fi
+fi
+readonly K3S_IMPORT_CMD K3S_IMPORT_USE_SUDO
 
 # Auto-add any service whose local image is missing. This makes first runs
 # (and recoveries from `docker image rm`) work without the user having to
@@ -294,7 +429,7 @@ done
 use_local_contracts=false
 if should_use_local_contracts; then
   use_local_contracts=true
-  trap cleanup_local_contracts EXIT
+  trap cleanup_all EXIT
   contracts_branch="$(git -C "${PROJECT_ROOT}/contracts" symbolic-ref --short HEAD 2>/dev/null || echo '(detached)')"
   contracts_dirty="$(git -C "${PROJECT_ROOT}/contracts" status --porcelain 2>/dev/null | head -n1)"
   if [[ -n "$contracts_dirty" ]]; then
@@ -408,7 +543,7 @@ api_key="$(kubectl exec -n "$namespace" "$web_pod" -- \
   ')"
 [[ -n "$api_key" ]] || die "trento eval returned an empty API key"
 
-# Build and load the host-simulation images for the active scenario, then
+# Build and load the host-simulation images for ALL discovered scenarios, then
 # deploy them as one Pod per host into the same namespace as trento-server.
 # Same namespace so the agents can resolve trento-web and trento-rabbitmq
 # without needing FQDNs.
@@ -427,6 +562,9 @@ api_key="$(kubectl exec -n "$namespace" "$web_pod" -- \
 # container then mounts that emptyDir read-only at /fixture and init.sh
 # overlays /fixture/etc and /fixture/usr onto the agent's own root.
 
+echo ">> discovered scenarios: ${HOSTS_SCENARIOS[*]}"
+echo ">> total hosts across all scenarios: ${#ALL_HOSTS[@]} (${ALL_HOSTS[*]})"
+
 if build_includes agent; then
   if [[ "$use_local_contracts" == "true" ]]; then
     apply_local_contracts_to_agent
@@ -442,50 +580,97 @@ fi
 # Always import the agent image (whether built this run or pre-existing).
 import_to_cluster "$HOSTS_AGENT_IMAGE"
 
-for host in "${HOSTS[@]}"; do
-  files_image="${REGISTRY_PREFIX}/files:${HOSTS_SCENARIO}-${host}"
+for host in "${ALL_HOSTS[@]}"; do
+  scenario="${HOST_SCENARIO[$host]}"
+  files_image="${REGISTRY_PREFIX}/files:${scenario}-${host}"
 
-  echo ">> building ${files_image}"
+  echo ">> building ${files_image} (scenario: ${scenario})"
   docker build \
     -f "$HOSTS_FILES_DOCKERFILE" \
-    --build-arg "SCENARIO=${HOSTS_SCENARIO}" \
+    --build-arg "SCENARIO=${scenario}" \
     --build-arg "HOST=${host}" \
     -t "$files_image" \
     "$PROJECT_ROOT"
 
-  echo ">> importing ${files_image} into k3d cluster ${cluster}"
-  k3d image import "$files_image" -c "$cluster"
+  import_to_cluster "$files_image"
 done
+
+# Generate a temporary values file that lists ALL hosts from ALL scenarios.
+# This overrides the static values.yaml so we don't have to keep it in sync.
+TMP_HOSTS_VALUES="$(mktemp /tmp/host-fixtures-values-XXXXXX.yaml)"
+trap cleanup_all EXIT
+
+# Build the hosts YAML list. Detect hasSap by checking for soappatrol.toml.
+hosts_yaml=""
+for host in "${ALL_HOSTS[@]}"; do
+  scenario="${HOST_SCENARIO[$host]}"
+  files_image="${REGISTRY_PREFIX}/files:${scenario}-${host}"
+  # Derive a stable UUID-like agentId from the host's machine-id (32 hex chars
+  # without dashes) — read from the fixture's machine-id file.
+  machine_id="$(cat "${HOSTS_FIXTURES_DIR}/${scenario}/${host}/etc/machine-id" 2>/dev/null | tr -d '\n' || echo "00000000000000000000000000000000")"
+  # Insert dashes to make it a proper UUID format
+  agent_id="${machine_id:0:8}-${machine_id:8:4}-${machine_id:12:4}-${machine_id:16:4}-${machine_id:20:12}"
+  # hasSap: true if the host has SAP-specific files (soappatrol.toml)
+  has_sap="false"
+  [[ -f "${HOSTS_FIXTURES_DIR}/${scenario}/${host}/etc/soappatrol.toml" ]] && has_sap="true"
+
+  hosts_yaml+="  - name: ${host}\n"
+  hosts_yaml+="    filesImage: ${files_image}\n"
+  hosts_yaml+="    agentId: ${agent_id}\n"
+  hosts_yaml+="    hasSap: ${has_sap}\n"
+done
+
+# Use a single valid label for the scenario. When multiple scenarios exist,
+# use "all" since the label must be Kubernetes-label-compatible.
+scenario_label="${HOSTS_SCENARIOS[0]}"
+if [[ ${#HOSTS_SCENARIOS[@]} -gt 1 ]]; then
+  scenario_label="all"
+fi
+
+cat > "$TMP_HOSTS_VALUES" <<EOF
+scenario: "${scenario_label}"
+trento:
+  apiKey: "${api_key}"
+hosts:
+$(printf '%b' "$hosts_yaml")
+EOF
+
+echo ">> generated host-fixtures values ($(wc -l < "$TMP_HOSTS_VALUES") lines)"
 
 helm_clean_failed_release "$HOSTS_RELEASE_NAME" "$namespace"
 
 echo ">> deploying helm release '${HOSTS_RELEASE_NAME}' in namespace '${namespace}'"
 helm upgrade --install "$HOSTS_RELEASE_NAME" "$HOSTS_CHART_DIR" \
   --namespace "$namespace" \
-  --set "trento.apiKey=${api_key}" \
+  -f "$TMP_HOSTS_VALUES" \
   --wait
 
 # Decide the URL where trento-web is reachable from the host.
 # Preference order:
-#   1. k3d loadbalancer host port mapping for container port 80
-#      (works everywhere when cluster was created with --port "X:80@loadbalancer").
+#   1. (k3d only) loadbalancer host port mapping for container port 80
+#      — works everywhere when the cluster was created with
+#      --port "X:80@loadbalancer".
 #   2. Traefik LoadBalancer's external IP, on Linux only
-#      (the docker bridge IP is host-reachable on Linux, but not on macOS/Windows
-#       where Docker runs in a VM).
+#      — the docker bridge IP (k3d) or the node IP (k3s via Klipper
+#      ServiceLB) is host-reachable on Linux, but not on macOS/Windows
+#      where Docker runs in a VM.
 final_url=""
 
-lb_container="k3d-${cluster}-serverlb"
-mapping=""
-if command -v docker >/dev/null 2>&1; then
-  mapping="$(docker port "$lb_container" 80/tcp 2>/dev/null | grep -v '^\[' | head -n1 || true)"
+if [[ "$cluster_type" == "k3d" ]]; then
+  lb_container="k3d-${cluster}-serverlb"
+  mapping=""
+  if command -v docker >/dev/null 2>&1; then
+    mapping="$(docker port "$lb_container" 80/tcp 2>/dev/null | grep -v '^\[' | head -n1 || true)"
+  fi
+  if [[ -n "$mapping" ]]; then
+    host="${mapping%:*}"
+    port="${mapping##*:}"
+    [[ "$host" == "0.0.0.0" ]] && host="localhost"
+    final_url="https://${host}:${port}/"
+  fi
 fi
 
-if [[ -n "$mapping" ]]; then
-  host="${mapping%:*}"
-  port="${mapping##*:}"
-  [[ "$host" == "0.0.0.0" ]] && host="localhost"
-  final_url="https://${host}:${port}/"
-elif [[ "$(uname -s)" == "Linux" ]]; then
+if [[ -z "$final_url" && "$(uname -s)" == "Linux" ]]; then
   lb_ip="$(kubectl get svc -n kube-system traefik -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
   [[ -n "$lb_ip" ]] && final_url="https://${lb_ip}/"
 fi
