@@ -1,0 +1,2 @@
+/usr/sap/HDC/SYS/exe/run/sapstartsrv pf=/usr/sap/HDC/HDC10/profile/HDC_HDC106 lifecycle_mgr
+/usr/sap/QAS/SYS/exe/run/sapstartsrv pf=/usr/sap/QAS/HDC20/profile/QAS_HDC206 lifecycle_mgr

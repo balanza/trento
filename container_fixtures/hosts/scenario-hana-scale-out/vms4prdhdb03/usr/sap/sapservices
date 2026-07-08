@@ -1,0 +1,1 @@
+/usr/sap/H4P/SYS/exe/run/sapstartsrv pf=/usr/sap/H4P/HDB00/profile/H4P_HDB006 lifecycle_mgr

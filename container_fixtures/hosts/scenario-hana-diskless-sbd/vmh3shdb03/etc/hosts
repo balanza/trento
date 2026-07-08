@@ -1,0 +1,6 @@
+127.0.0.1 localhost
+::1 localhost ip6-localhost ip6-loopback
+
+127.0.1.1 vmh3shdb03
+10.0.0.2 vmh3shdb01
+10.0.0.3 vmh3shdb02

@@ -1,0 +1,235 @@
+[[commands]]
+matches = "dmidecode -s chassis-asset-tag"
+output = """
+00000000-0000-0000-0000-000000000000"""
+[[commands]]
+matches = "dmidecode -s system-manufacturer"
+output = """
+Microsoft Corporation"""
+[[commands]]
+matches = "dmidecode -s bios-vendor"
+output = """
+Microsoft Corporation"""
+[[commands]]
+matches = "dmidecode -s system-version"
+output = """
+Microsoft Corporation Hyper-V UEFI Release v4.1"""
+[[commands]]
+matches = "dmidecode"
+output = """
+Microsoft Corporation"""
+[[commands]]
+matches = "saptune --format json status"
+output = """
+{
+  "$schema": "file:///usr/share/saptune/schemas/1.0/saptune_status.schema.json",
+  "argv": "saptune --format json status",
+  "command": "status",
+  "exit code": 4,
+  "messages": [
+    {
+      "message": "ini.go:310: block device related section settings detected: Traversing all block devices can take a considerable amount of time.\n",
+      "priority": "NOTICE"
+    }
+  ],
+  "pid": 514,
+  "publish time": "2024-03-07 09:19:58.777",
+  "result": {
+    "Notes applied": [
+      "941735",
+      "1771258",
+      "2578899",
+      "2993054",
+      "1656250",
+      "900929"
+    ],
+    "Notes applied by Solution": [
+      {
+        "Note list": [
+          "941735",
+          "1771258",
+          "2578899",
+          "2993054",
+          "1656250",
+          "900929"
+        ],
+        "Solution ID": "NETWEAVER"
+      }
+    ],
+    "Notes enabled": [
+      "941735",
+      "1771258",
+      "2578899",
+      "2993054",
+      "1656250",
+      "900929"
+    ],
+    "Notes enabled additionally": [],
+    "Notes enabled by Solution": [
+      {
+        "Note list": [
+          "941735",
+          "1771258",
+          "2578899",
+          "2993054",
+          "1656250",
+          "900929"
+        ],
+        "Solution ID": "NETWEAVER"
+      }
+    ],
+    "Solution applied": [
+      {
+        "Solution ID": "NETWEAVER",
+        "applied partially": false
+      }
+    ],
+    "Solution enabled": [
+      "NETWEAVER"
+    ],
+    "configured version": "3",
+    "package version": "3.1.1",
+    "remember message": "\nRegarding the tuning state of the system please use 'saptune note verify' for detailed information.\n\n",
+    "services": {
+      "sapconf": [
+        "disabled",
+        "inactive"
+      ],
+      "saptune": [
+        "enabled",
+        "active"
+      ],
+      "tuned": [
+        "disabled",
+        "inactive"
+      ]
+    },
+    "staging": {
+      "Notes staged": [],
+      "Solutions staged": [],
+      "staging enabled": false
+    },
+    "systemd system state": "running",
+    "tuning state": "not compliant",
+    "virtualization": "microsoft"
+  }
+}"""
+[[commands]]
+matches = "rpm -q --qf %{VERSION} saptune"
+output = """
+3.1.1"""
+[[commands]]
+matches = "SUSEConnect -s"
+output = """
+[
+  {
+    "arch": "x86_64",
+    "expires_at": "2025-03-01 07:00:20 UTC",
+    "identifier": "SLES_SAP",
+    "starts_at": "2021-10-18 06:23:46 UTC",
+    "status": "Registered",
+    "subscription_status": "ACTIVE",
+    "type": "internal",
+    "version": "15.4"
+  },
+  {
+    "arch": "x86_64",
+    "expires_at": "2025-03-01 07:00:20 UTC",
+    "identifier": "sle-ha",
+    "starts_at": "2021-10-18 06:23:46 UTC",
+    "status": "Registered",
+    "subscription_status": "ACTIVE",
+    "type": "internal",
+    "version": "15.4"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-basesystem",
+    "status": "Registered",
+    "version": "15.4"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-containers",
+    "status": "Not Registered",
+    "version": "15.4"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-desktop-applications",
+    "status": "Registered",
+    "version": "15.4"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-development-tools",
+    "status": "Not Registered",
+    "version": "15.4"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-public-cloud",
+    "status": "Not Registered",
+    "version": "15.4"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-sap-applications",
+    "status": "Registered",
+    "version": "15.4"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-server-applications",
+    "status": "Registered",
+    "version": "15.4"
+  }
+]"""
+[[commands]]
+matches = "/sbin/sysctl -a"
+output = """
+kernel.hostname = vmnwhso01
+kernel.osrelease = 5.3.18-150300-default
+kernel.os_type = Linux
+kernel.sched_autogroup_enabled = 1
+kernel.threads-max = 31107
+fs.file-max = 1000000
+fs.aio-max-nr = 1048576
+vm.swappiness = 60
+vm.dirty_ratio = 20
+vm.dirty_background_ratio = 10
+vm.overcommit_memory = 0
+net.core.somaxconn = 4096
+net.ipv4.tcp_max_syn_backlog = 8192
+net.ipv4.tcp_slow_start_after_idle = 0
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.ip_local_port_range = 32768	60999
+net.ipv4.tcp_syncookies = 1
+net.ipv4.conf.all.rp_filter = 2
+kernel.shmmax = 18446744073709551615
+kernel.shmall = 18446744073709551615
+kernel.msgmax = 8192
+kernel.msgmnb = 16384
+kernel.pid_max = 32768
+kernel.random.uuid = 00000000-0000-0000-0000-000000000000
+net.ipv4.tcp_keepalive_time = 7200
+net.ipv4.tcp_keepalive_intvl = 75
+net.ipv4.tcp_keepalive_probes = 9
+sunrpc.tcp_slot_tbl_entries = 16
+sunrpc.tcp_max_slot_table_entries = 65536
+"""
+[[commands]]
+matches = "/usr/bin/df -k -P --"
+output = """
+Filesystem     1K-blocks    Used Available Use% Mounted on
+/dev/sda1       52428800 20971520  31457280  40% /
+/dev/sda2      104857600 52428800  52428800  50% /hana/data
+/dev/sda3      104857600 52428800  52428800  50% /hana/log
+nfs:/hana/shared 209715200 52428800 157286400  25% /hana/shared
+/dev/sda4       52428800 10485760  41943040  20% /usr/sap"""
+[[commands]]
+matches = "sudo -l -U"
+output = """
+User root may run the following commands on this host:
+    (ALL : ALL) NOPASSWD: ALL
+"""

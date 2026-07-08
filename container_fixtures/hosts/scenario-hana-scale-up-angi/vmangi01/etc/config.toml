@@ -1,0 +1,549 @@
+[[commands]]
+matches = "dmidecode -s chassis-asset-tag"
+output = """
+00000000-0000-0000-0000-000000000000"""
+[[commands]]
+matches = "dmidecode -s system-manufacturer"
+output = """
+Microsoft Corporation"""
+[[commands]]
+matches = "dmidecode -s bios-vendor"
+output = """
+Microsoft Corporation"""
+[[commands]]
+matches = "dmidecode -s system-version"
+output = """
+Microsoft Corporation Hyper-V UEFI Release v4.1"""
+[[commands]]
+matches = "dmidecode"
+output = """
+Microsoft Corporation"""
+[[commands]]
+matches = "cibadmin --query --local"
+output = """
+<cib admin_epoch="0" epoch="0" num_updates="0">
+  <configuration>
+    <crm_config>
+      <cluster_property_set id="cib-bootstrap-options">
+        <nvpair id="cib-bootstrap-options-have-watchdog" name="have-watchdog" value="true"/>
+        <nvpair id="cib-bootstrap-options-dc-version" name="dc-version" value="2.1.5+20221208.a3f44794f-150500.6.14.4-2.1.5+20221208.a3f44794f"/>
+        <nvpair id="cib-bootstrap-options-cluster-infrastructure" name="cluster-infrastructure" value="corosync"/>
+        <nvpair id="cib-bootstrap-options-cluster-name" name="cluster-name" value="hana_angi"/>
+        <nvpair id="cib-bootstrap-options-stonith-timeout" name="stonith-timeout" value="150"/>
+        <nvpair id="cib-bootstrap-options-stonith-enabled" name="stonith-enabled" value="true"/>
+        <nvpair id="cib-bootstrap-options-stonith-action" name="stonith-action" value="reboot"/>
+        <nvpair id="cib-bootstrap-options-priority-fencing-delay" name="priority-fencing-delay" value="30"/>
+        <nvpair id="cib-bootstrap-options-last-lrm-refresh" name="last-lrm-refresh" value="1718007815"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_lss_WDF" name="hana_hn9_site_lss_WDF" value="4"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_srr_WDF" name="hana_hn9_site_srr_WDF" value="P"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_lss_ROT" name="hana_hn9_site_lss_ROT" value="4"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_srr_ROT" name="hana_hn9_site_srr_ROT" value="S"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_srMode_ROT" name="hana_hn9_site_srMode_ROT" value="sync"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_srMode_" name="hana_hn9_site_srMode_" value="sync"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_srMode_WDF" name="hana_hn9_site_srMode_WDF" value="sync"/>
+        <nvpair id="SAPHanaSR-hana_hn9_glob_topology" name="hana_hn9_glob_topology" value="ScaleUp"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_mns_WDF" name="hana_hn9_site_mns_WDF" value="vmangi01"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_mns_ROT" name="hana_hn9_site_mns_ROT" value="vmangi02"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_lpt_ROT" name="hana_hn9_site_lpt_ROT" value="30"/>
+        <nvpair id="SAPHanaSR-hana_hn9_glob_sec" name="hana_hn9_glob_sec" value="ROT"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_srHook_WDF" name="hana_hn9_site_srHook_WDF" value="PRIM"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_lpt_WDF" name="hana_hn9_site_lpt_WDF" value="1718024637"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_opMode_ROT" name="hana_hn9_site_opMode_ROT" value="logreplay"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_opMode_WDF" name="hana_hn9_site_opMode_WDF" value="logreplay"/>
+        <nvpair id="SAPHanaSR-hana_hn9_glob_prim" name="hana_hn9_glob_prim" value="WDF"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_srPoll_WDF" name="hana_hn9_site_srPoll_WDF" value="PRIM"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_srHook_ROT" name="hana_hn9_site_srHook_ROT" value="SOK"/>
+        <nvpair id="SAPHanaSR-hana_hn9_site_srPoll_ROT" name="hana_hn9_site_srPoll_ROT" value="SOK"/>
+      </cluster_property_set>
+    </crm_config>
+    <nodes>
+      <node id="1" uname="vmangi01">
+        <instance_attributes id="nodes-1">
+          <nvpair id="nodes-1-hana_hn9_vhost" name="hana_hn9_vhost" value="vmangi01"/>
+          <nvpair id="nodes-1-hana_hn9_site" name="hana_hn9_site" value="WDF"/>
+        </instance_attributes>
+      </node>
+      <node id="2" uname="vmangi02">
+        <instance_attributes id="nodes-2">
+          <nvpair id="nodes-2-hana_hn9_vhost" name="hana_hn9_vhost" value="vmangi02"/>
+          <nvpair id="nodes-2-hana_hn9_site" name="hana_hn9_site" value="ROT"/>
+        </instance_attributes>
+      </node>
+    </nodes>
+    <resources>
+      <clone id="cln_SAPHanaTop_HN9_HDB09">
+        <meta_attributes id="cln_SAPHanaTop_HN9_HDB09-meta_attributes">
+          <nvpair id="cln_SAPHanaTop_HN9_HDB09-meta_attributes-clone-node-max" name="clone-node-max" value="1"/>
+          <nvpair id="cln_SAPHanaTop_HN9_HDB09-meta_attributes-interleave" name="interleave" value="true"/>
+        </meta_attributes>
+      <primitive id="rsc_SAPHanaTop_HN9_HDB09" class="ocf" type="SAPHanaTopology" provider="suse">
+        <instance_attributes id="rsc_SAPHanaTop_HN9_HDB09-instance_attributes">
+          <nvpair id="rsc_SAPHanaTop_HN9_HDB09-instance_attributes-SID" name="SID" value="HN9"/>
+          <nvpair id="rsc_SAPHanaTop_HN9_HDB09-instance_attributes-InstanceNumber" name="InstanceNumber" value="09"/>
+        </instance_attributes>
+        <operations>
+          <op id="rsc_SAPHanaTop_HN9_HDB09-start-0" name="start" role="" interval="0" timeout="600"/>
+          <op id="rsc_SAPHanaTop_HN9_HDB09-stop-0" name="stop" role="" interval="0" timeout="300"/>
+          <op id="rsc_SAPHanaTop_HN9_HDB09-monitor-50" name="monitor" role="" interval="50" timeout="600"/>
+        </operations>
+      </primitive>
+      </clone>
+      <clone id="mst_SAPHanacon_HN9_HDB09">
+        <meta_attributes id="mst_SAPHanacon_HN9_HDB09-meta_attributes">
+          <nvpair id="mst_SAPHanacon_HN9_HDB09-meta_attributes-clone-node-max" name="clone-node-max" value="1"/>
+          <nvpair id="mst_SAPHanacon_HN9_HDB09-meta_attributes-promotable" name="promotable" value="true"/>
+          <nvpair id="mst_SAPHanacon_HN9_HDB09-meta_attributes-interleave" name="interleave" value="true"/>
+          <nvpair id="mst_SAPHanacon_HN9_HDB09-meta_attributes-maintenance" name="maintenance" value="false"/>
+        </meta_attributes>
+      <primitive id="rsc_SAPHanaCon_HN9_HDB09" class="ocf" type="SAPHanaController" provider="suse">
+        <instance_attributes id="rsc_SAPHanaCon_HN9_HDB09-instance_attributes">
+          <nvpair id="rsc_SAPHanaCon_HN9_HDB09-instance_attributes-SID" name="SID" value="HN9"/>
+          <nvpair id="rsc_SAPHanaCon_HN9_HDB09-instance_attributes-InstanceNumber" name="InstanceNumber" value="09"/>
+          <nvpair id="rsc_SAPHanaCon_HN9_HDB09-instance_attributes-PREFER_SITE_TAKEOVER" name="PREFER_SITE_TAKEOVER" value="true"/>
+          <nvpair id="rsc_SAPHanaCon_HN9_HDB09-instance_attributes-DUPLICATE_PRIMARY_TIMEOUT" name="DUPLICATE_PRIMARY_TIMEOUT" value="7200"/>
+          <nvpair id="rsc_SAPHanaCon_HN9_HDB09-instance_attributes-AUTOMATED_REGISTER" name="AUTOMATED_REGISTER" value="false"/>
+        </instance_attributes>
+        <meta_attributes id="rsc_SAPHanaCon_HN9_HDB09-meta_attributes">
+          <nvpair id="rsc_SAPHanaCon_HN9_HDB09-meta_attributes-priority" name="priority" value="100"/>
+        </meta_attributes>
+        <operations>
+          <op id="rsc_SAPHanaCon_HN9_HDB09-start-0" name="start" role="" interval="0" timeout="3600"/>
+          <op id="rsc_SAPHanaCon_HN9_HDB09-stop-0" name="stop" role="" interval="0" timeout="3600"/>
+          <op id="rsc_SAPHanaCon_HN9_HDB09-promote-0" name="promote" role="" interval="0" timeout="900"/>
+          <op id="rsc_SAPHanaCon_HN9_HDB09-demote-0" name="demote" role="" interval="0" timeout="320"/>
+          <op id="rsc_SAPHanaCon_HN9_HDB09-monitor-60" name="monitor" role="Promoted" interval="60" timeout="700"/>
+          <op id="rsc_SAPHanaCon_HN9_HDB09-monitor-61" name="monitor" role="Unpromoted" interval="61" timeout="700"/>
+        </operations>
+      </primitive>
+      </clone>
+      <primitive id="stonith-sbd" class="stonith" type="external/sbd" provider="">
+        <instance_attributes id="stonith-sbd-instance_attributes">
+          <nvpair id="stonith-sbd-instance_attributes-pcmk_delay_max" name="pcmk_delay_max" value="15"/>
+        </instance_attributes>
+      </primitive>
+      <primitive id="rsc_ip_HN9_HDB09" class="ocf" type="IPaddr2" provider="heartbeat">
+        <instance_attributes id="rsc_ip_HN9_HDB09-instance_attributes">
+          <nvpair id="rsc_ip_HN9_HDB09-instance_attributes-ip" name="ip" value="10.70.1.13"/>
+        </instance_attributes>
+        <operations>
+          <op id="rsc_ip_HN9_HDB09-monitor-10" name="monitor" role="" interval="10" timeout="20"/>
+        </operations>
+      </primitive>
+    </resources>
+  </configuration>
+</cib>
+"""
+[[commands]]
+matches = "crm_mon -X --inactive"
+output = """
+<crm_mon version="2.1.5+20221208.a3f44794f-150500.6.14.4">
+  <summary>
+    <nodes_configured number="2"/>
+    <last_change time="Mon Jun 10 13:03:57 2024"/>
+    <resources_configured number="6" disabled="0" blocked="0"/>
+    <cluster_options stonith-enabled="true"/>
+  </summary>
+  <nodes>
+    <node name="vmangi01" id="1" online="true" standby="false" standby_onfail="false" maintenance="false" pending="false" unclean="false" shutdown="false" expected_up="true" is_dc="false" resources_running="4" type="member"/>
+    <node name="vmangi02" id="2" online="true" standby="false" standby_onfail="false" maintenance="false" pending="false" unclean="false" shutdown="false" expected_up="true" is_dc="true" resources_running="2" type="member"/>
+  </nodes>
+  <resources>
+      <resource id="stonith-sbd" resource_agent="stonith:external/sbd" role="Started" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vmangi01" id="1" cached="true"/>
+      </resource>
+      <resource id="rsc_ip_HN9_HDB09" resource_agent="ocf::heartbeat:IPaddr2" role="Started" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vmangi01" id="1" cached="true"/>
+      </resource>
+    <clone id="cln_SAPHanaTop_HN9_HDB09" multi_state="false" managed="true" failed="false" failure_ignored="false" unique="false">
+      <resource id="rsc_SAPHanaTop_HN9_HDB09" resource_agent="ocf::suse:SAPHanaTopology" role="Started" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vmangi01" id="1" cached="true"/>
+      </resource>
+      <resource id="rsc_SAPHanaTop_HN9_HDB09" resource_agent="ocf::suse:SAPHanaTopology" role="Started" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vmangi02" id="2" cached="true"/>
+      </resource>
+    </clone>
+    <clone id="mst_SAPHanacon_HN9_HDB09" multi_state="true" managed="true" failed="false" failure_ignored="false" unique="false">
+      <resource id="rsc_SAPHanaCon_HN9_HDB09" resource_agent="ocf::suse:SAPHanaController" role="Master" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vmangi01" id="1" cached="true"/>
+      </resource>
+      <resource id="rsc_SAPHanaCon_HN9_HDB09" resource_agent="ocf::suse:SAPHanaController" role="Slave" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vmangi02" id="2" cached="true"/>
+      </resource>
+    </clone>
+  </resources>
+  <node_attributes>
+    <node name="vmangi01">
+      <attribute name="hana_hn9_clone_state" value="PROMOTED"/>
+      <attribute name="hana_hn9_roles" value="master1:master:worker:master"/>
+      <attribute name="hana_hn9_site" value="WDF"/>
+      <attribute name="hana_hn9_srah" value="-"/>
+      <attribute name="hana_hn9_version" value="2.00.073.00"/>
+      <attribute name="hana_hn9_vhost" value="vmangi01"/>
+      <attribute name="master-rsc_SAPHanaCon_HN9_HDB09" value="150"/>
+    </node>
+    <node name="vmangi02">
+      <attribute name="hana_hn9_clone_state" value="DEMOTED"/>
+      <attribute name="hana_hn9_roles" value="master1:master:worker:master"/>
+      <attribute name="hana_hn9_site" value="ROT"/>
+      <attribute name="hana_hn9_srah" value="-"/>
+      <attribute name="hana_hn9_version" value="2.00.073.00"/>
+      <attribute name="hana_hn9_vhost" value="vmangi02"/>
+      <attribute name="master-rsc_SAPHanaCon_HN9_HDB09" value="100"/>
+    </node>
+  </node_attributes>
+  <node_history>
+    <node name="vmangi01">
+      <resource_history id="stonith-sbd" migration-threshold="5000" fail-count="0"/>
+      <resource_history id="rsc_SAPHanaTop_HN9_HDB09" migration-threshold="5000" fail-count="0"/>
+      <resource_history id="rsc_ip_HN9_HDB09" migration-threshold="5000" fail-count="0"/>
+      <resource_history id="rsc_SAPHanaCon_HN9_HDB09" migration-threshold="5000" fail-count="0"/>
+    </node>
+    <node name="vmangi02">
+      <resource_history id="rsc_SAPHanaTop_HN9_HDB09" migration-threshold="5000" fail-count="0"/>
+      <resource_history id="rsc_ip_HN9_HDB09" migration-threshold="5000" fail-count="0"/>
+      <resource_history id="rsc_SAPHanaCon_HN9_HDB09" migration-threshold="5000" fail-count="0"/>
+    </node>
+  </node_history>
+</crm_mon>
+"""
+[[commands]]
+matches = "crm_mon -1"
+output = """
+Cluster Summary:
+  * Stack: corosync
+"""
+[[commands]]
+matches = "crmadmin -qD"
+output = """
+vmangi02"""
+[[commands]]
+matches = "crmadmin -qS vmangi02"
+output = """
+S_IDLE"""
+[[commands]]
+matches = "sbd -d /dev/disk/by-id/scsi-3600140549ffde0461745510a8f5e399 dump"
+output = """
+== dump of header Header ==
+2.1
+== dump of header SectorSize ==
+512
+== dump of header Slots ==
+255
+== dump of header TimeoutAllocate ==
+2
+== dump of header TimeoutLoop ==
+1
+== dump of header TimeoutMsgwait ==
+120
+== dump of header TimeoutWatchdog ==
+60
+== dump of header Uuid ==
+8c306a35-a58b-451e-a34b-9341076b2f49"""
+[[commands]]
+matches = "sbd -d /dev/disk/by-id/scsi-3600140549ffde0461745510a8f5e399 list"
+output = """
+0	vmangi01	clear
+1	vmangi02	clear"""
+[[commands]]
+matches = "saptune --format json status"
+output = """
+{
+  "$schema": "file:///usr/share/saptune/schemas/1.0/saptune_status.schema.json",
+  "argv": "saptune --format json status",
+  "command": "status",
+  "exit code": 0,
+  "messages": [
+    {
+      "message": "sysctl.go:75: Parameter 'fs.aio-max-nr' additional defined in the following sysctl config file /usr/lib/sysctl.d/99-sysctl.conf(18446744073709551615).\n",
+      "priority": "WARNING"
+    },
+    {
+      "message": "ini.go:310: block device related section settings detected: Traversing all block devices can take a considerable amount of time.\n",
+      "priority": "NOTICE"
+    },
+    {
+      "message": "sysctl.go:75: Parameter 'vm.dirty_bytes' additional defined in the following sysctl config file /usr/lib/sysctl.d/99-sysctl.conf(629145600).\n",
+      "priority": "WARNING"
+    },
+    {
+      "message": "sysctl.go:75: Parameter 'vm.dirty_background_bytes' additional defined in the following sysctl config file /usr/lib/sysctl.d/99-sysctl.conf(314572800).\n",
+      "priority": "WARNING"
+    },
+    {
+      "message": "sysctl.go:75: Parameter 'net.core.somaxconn' additional defined in the following sysctl config file /usr/lib/sysctl.d/99-sysctl.conf(4096).\n",
+      "priority": "WARNING"
+    },
+    {
+      "message": "sysctl.go:75: Parameter 'net.ipv4.tcp_max_syn_backlog' additional defined in the following sysctl config file /usr/lib/sysctl.d/99-sysctl.conf(8192).\n",
+      "priority": "WARNING"
+    },
+    {
+      "message": "sysctl.go:75: Parameter 'net.ipv4.tcp_slow_start_after_idle' additional defined in the following sysctl config file /usr/lib/sysctl.d/99-sysctl.conf(0).\n",
+      "priority": "WARNING"
+    },
+    {
+      "message": "sysctl.go:75: Parameter 'net.ipv4.tcp_window_scaling' additional defined in the following sysctl config file /usr/lib/sysctl.d/99-sysctl.conf(1).\n",
+      "priority": "WARNING"
+    }
+  ],
+  "pid": 4241,
+  "publish time": "2024-06-10 12:57:39.876",
+  "result": {
+    "Notes applied": [
+      "941735",
+      "1771258",
+      "1868829",
+      "1980196",
+      "2578899",
+      "2684254",
+      "2382421",
+      "2534844",
+      "2993054",
+      "1656250"
+    ],
+    "Notes applied by Solution": [
+      {
+        "Note list": [
+          "941735",
+          "1771258",
+          "1868829",
+          "1980196",
+          "2578899",
+          "2684254",
+          "2382421",
+          "2534844",
+          "2993054",
+          "1656250"
+        ],
+        "Solution ID": "HANA"
+      }
+    ],
+    "Notes enabled": [
+      "941735",
+      "1771258",
+      "1868829",
+      "1980196",
+      "2578899",
+      "2684254",
+      "2382421",
+      "2534844",
+      "2993054",
+      "1656250"
+    ],
+    "Notes enabled additionally": [],
+    "Notes enabled by Solution": [
+      {
+        "Note list": [
+          "941735",
+          "1771258",
+          "1868829",
+          "1980196",
+          "2578899",
+          "2684254",
+          "2382421",
+          "2534844",
+          "2993054",
+          "1656250"
+        ],
+        "Solution ID": "HANA"
+      }
+    ],
+    "Solution applied": [
+      {
+        "Solution ID": "HANA",
+        "applied partially": false
+      }
+    ],
+    "Solution enabled": [
+      "HANA"
+    ],
+    "configured version": "3",
+    "package version": "3.1.2",
+    "remember message": "\n\n",
+    "services": {
+      "sapconf": [
+        "disabled",
+        "inactive"
+      ],
+      "saptune": [
+        "enabled",
+        "active"
+      ],
+      "tuned": [
+        "disabled",
+        "inactive"
+      ]
+    },
+    "staging": {
+      "Notes staged": [],
+      "Solutions staged": [],
+      "staging enabled": false
+    },
+    "systemd system state": "running",
+    "tuning state": "compliant",
+    "virtualization": "microsoft"
+  }
+}"""
+[[commands]]
+matches = "rpm -q --qf %{VERSION} saptune"
+output = """
+3.1.2"""
+[[commands]]
+matches = "SUSEConnect -s"
+output = """
+[
+  {
+    "arch": "x86_64",
+    "expires_at": "2025-03-01 07:00:20 UTC",
+    "identifier": "SLES_SAP",
+    "starts_at": "2021-10-18 06:23:46 UTC",
+    "status": "Registered",
+    "subscription_status": "ACTIVE",
+    "type": "internal",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "expires_at": "2025-03-01 07:00:20 UTC",
+    "identifier": "sle-ha",
+    "starts_at": "2021-10-18 06:23:46 UTC",
+    "status": "Registered",
+    "subscription_status": "ACTIVE",
+    "type": "internal",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-basesystem",
+    "status": "Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-containers",
+    "status": "Not Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-desktop-applications",
+    "status": "Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-development-tools",
+    "status": "Not Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-public-cloud",
+    "status": "Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-sap-applications",
+    "status": "Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-server-applications",
+    "status": "Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-python3",
+    "status": "Registered",
+    "version": "15.5"
+  }
+]"""
+[[commands]]
+matches = "sappfpar SAPSYSTEMNAME SAPGLOBALHOST SAPFQDN SAPDBHOST dbs/hdb/dbname dbs/hdb/schema rdisp/msp/msserv rdisp/msserv_internal name=HN9"
+output = """
+SAPSYSTEMNAME=HN9
+SAPGLOBALHOST=vmangi01
+SAPFQDN=
+SAPDBHOST=vmangi01
+dbs/hdb/dbname=HN9
+dbs/hdb/schema=SAPHANADB
+rdisp/msp/msserv=
+rdisp/msserv_internal=
+"""
+[[commands]]
+matches = "corosync-cmapctl -b"
+output = """
+totem.cluster_name (str) = hana_angi
+nodelist.node.1.ring0_addr (str) = vmangi01
+nodelist.node.1.nodeid (u32) = 1
+nodelist.node.2.ring0_addr (str) = vmangi02
+nodelist.node.2.nodeid (u32) = 2"""
+[[commands]]
+matches = "/sbin/sysctl -a"
+output = """
+kernel.hostname = vmangi01
+kernel.osrelease = 5.3.18-150300-default
+kernel.os_type = Linux
+kernel.sched_autogroup_enabled = 1
+kernel.threads-max = 31107
+fs.file-max = 1000000
+fs.aio-max-nr = 1048576
+vm.swappiness = 60
+vm.dirty_ratio = 20
+vm.dirty_background_ratio = 10
+vm.overcommit_memory = 0
+net.core.somaxconn = 4096
+net.ipv4.tcp_max_syn_backlog = 8192
+net.ipv4.tcp_slow_start_after_idle = 0
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.ip_local_port_range = 32768	60999
+net.ipv4.tcp_syncookies = 1
+net.ipv4.conf.all.rp_filter = 2
+kernel.shmmax = 18446744073709551615
+kernel.shmall = 18446744073709551615
+kernel.msgmax = 8192
+kernel.msgmnb = 16384
+kernel.pid_max = 32768
+kernel.random.uuid = 00000000-0000-0000-0000-000000000000
+net.ipv4.tcp_keepalive_time = 7200
+net.ipv4.tcp_keepalive_intvl = 75
+net.ipv4.tcp_keepalive_probes = 9
+sunrpc.tcp_slot_tbl_entries = 16
+sunrpc.tcp_max_slot_table_entries = 65536
+"""
+[[commands]]
+matches = "/usr/bin/df -k -P --"
+output = """
+Filesystem     1K-blocks    Used Available Use% Mounted on
+/dev/sda1       52428800 20971520  31457280  40% /
+/dev/sda2      104857600 52428800  52428800  50% /hana/data
+/dev/sda3      104857600 52428800  52428800  50% /hana/log
+nfs:/hana/shared 209715200 52428800 157286400  25% /hana/shared
+/dev/sda4       52428800 10485760  41943040  20% /usr/sap"""
+[[commands]]
+matches = "su - "
+output = """
+name:       disp+work
+kernel release       753.00.00
+compilation mode      64BIT
+patch number          1200
+features sapwebdisp
+"""
+[[commands]]
+matches = "saphostctrl -function Ping"
+output = """
+SUCCESS ( 42 usec)
+"""
+[[commands]]
+matches = "saphostctrl -function ListInstances"
+output = """
+    Inst Info: HN9 - 09 - vmangi01 - 30009, patch 1234, changelist 5678"""
+[[commands]]
+matches = "sudo -l -U"
+output = """
+User hn9adm may run the following commands on this host:
+    (ALL : ALL) NOPASSWD: ALL
+"""

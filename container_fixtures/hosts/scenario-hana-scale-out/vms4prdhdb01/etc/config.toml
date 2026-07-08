@@ -1,0 +1,623 @@
+[[commands]]
+matches = "dmidecode -s chassis-asset-tag"
+output = """
+00000000-0000-0000-0000-000000000000"""
+[[commands]]
+matches = "dmidecode -s system-manufacturer"
+output = """
+Microsoft Corporation"""
+[[commands]]
+matches = "dmidecode -s bios-vendor"
+output = """
+Microsoft Corporation"""
+[[commands]]
+matches = "dmidecode -s system-version"
+output = """
+Microsoft Corporation Hyper-V UEFI Release v4.1"""
+[[commands]]
+matches = "dmidecode"
+output = """
+Microsoft Corporation"""
+[[commands]]
+matches = "cibadmin --query --local"
+output = """
+<cib admin_epoch="0" epoch="0" num_updates="0">
+  <configuration>
+    <crm_config>
+      <cluster_property_set id="cib-bootstrap-options">
+        <nvpair id="cib-bootstrap-options-have-watchdog" name="have-watchdog" value="true"/>
+        <nvpair id="cib-bootstrap-options-dc-version" name="dc-version" value="2.1.5+20221208.a3f44794f-150500.6.5.8-2.1.5+20221208.a3f44794f"/>
+        <nvpair id="cib-bootstrap-options-cluster-infrastructure" name="cluster-infrastructure" value="corosync"/>
+        <nvpair id="cib-bootstrap-options-cluster-name" name="cluster-name" value="hana_scale_out_cluster"/>
+        <nvpair id="cib-bootstrap-options-stonith-enabled" name="stonith-enabled" value="true"/>
+        <nvpair id="cib-bootstrap-options-stonith-timeout" name="stonith-timeout" value="150"/>
+        <nvpair id="cib-bootstrap-options-priority-fencing-delay" name="priority-fencing-delay" value="0"/>
+        <nvpair id="cib-bootstrap-options-maintenance-mode" name="maintenance-mode" value="false"/>
+        <nvpair id="cib-bootstrap-options-placement-strategy" name="placement-strategy" value="balanced"/>
+        <nvpair id="cib-bootstrap-options-no-quorum-policy" name="no-quorum-policy" value="freeze"/>
+        <nvpair id="cib-bootstrap-options-concurrent-fencing" name="concurrent-fencing" value="true"/>
+        <nvpair id="cib-bootstrap-options-stonith-action" name="stonith-action" value="reboot"/>
+        <nvpair id="cib-bootstrap-options-last-lrm-refresh" name="last-lrm-refresh" value="1706008908"/>
+        <nvpair id="SAPHanaSR-hana_h4p_site_lss_TWO" name="hana_h4p_site_lss_TWO" value="4"/>
+        <nvpair id="SAPHanaSR-hana_h4p_site_lss_ONE" name="hana_h4p_site_lss_ONE" value="4"/>
+        <nvpair id="SAPHanaSR-hana_h4p_site_srr_TWO" name="hana_h4p_site_srr_TWO" value="P"/>
+        <nvpair id="SAPHanaSR-hana_h4p_site_srr_ONE" name="hana_h4p_site_srr_ONE" value="S"/>
+        <nvpair id="SAPHanaSR-hana_h4p_glob_upd" name="hana_h4p_glob_upd" value="ok"/>
+        <nvpair id="SAPHanaSR-hana_h4p_site_mns_TWO" name="hana_h4p_site_mns_TWO" value="vms4prdhdb03"/>
+        <nvpair id="SAPHanaSR-hana_h4p_site_mns_ONE" name="hana_h4p_site_mns_ONE" value="vms4prdhdb01"/>
+        <nvpair id="SAPHanaSR-hana_h4p_site_lpt_TWO" name="hana_h4p_site_lpt_TWO" value="1706013953"/>
+        <nvpair id="SAPHanaSR-hana_h4p_site_lpt_ONE" name="hana_h4p_site_lpt_ONE" value="30"/>
+        <nvpair id="SAPHanaSR-hana_h4p_glob_sync_state" name="hana_h4p_glob_sync_state" value="SOK"/>
+        <nvpair id="SAPHanaSR-hana_h4p_glob_prim" name="hana_h4p_glob_prim" value="TWO"/>
+        <nvpair id="SAPHanaSR-hana_h4p_glob_sec" name="hana_h4p_glob_sec" value="ONE"/>
+        <nvpair id="SAPHanaSR-hana_h4p_site_srHook_TWO" name="hana_h4p_site_srHook_TWO" value="PRIM"/>
+        <nvpair id="SAPHanaSR-hana_h4p_site_srHook_ONE" name="hana_h4p_site_srHook_ONE" value="SOK"/>
+      </cluster_property_set>
+    </crm_config>
+    <nodes>
+      <node id="1" uname="vms4prdhdb01">
+        <instance_attributes id="nodes-1">
+          <nvpair id="nodes-1-hana_h4p_site" name="hana_h4p_site" value="ONE"/>
+          <nvpair id="nodes-1-hana_h4p_gra" name="hana_h4p_gra" value="2.0"/>
+        </instance_attributes>
+      </node>
+      <node id="2" uname="vms4prdhdb02">
+        <instance_attributes id="nodes-2">
+          <nvpair id="nodes-2-hana_h4p_site" name="hana_h4p_site" value="ONE"/>
+          <nvpair id="nodes-2-hana_h4p_gra" name="hana_h4p_gra" value="2.0"/>
+        </instance_attributes>
+      </node>
+      <node id="3" uname="vms4prdhdb03">
+        <instance_attributes id="nodes-3">
+          <nvpair id="nodes-3-hana_h4p_site" name="hana_h4p_site" value="TWO"/>
+          <nvpair id="nodes-3-hana_h4p_gra" name="hana_h4p_gra" value="2.0"/>
+        </instance_attributes>
+      </node>
+      <node id="4" uname="vms4prdhdb04">
+        <instance_attributes id="nodes-4">
+          <nvpair id="nodes-4-hana_h4p_site" name="hana_h4p_site" value="TWO"/>
+          <nvpair id="nodes-4-hana_h4p_gra" name="hana_h4p_gra" value="2.0"/>
+        </instance_attributes>
+      </node>
+      <node id="5" uname="vms4prdmm">
+      </node>
+    </nodes>
+    <resources>
+      <clone id="cln_SAPHanaTop_H4P_HDB00">
+        <meta_attributes id="cln_SAPHanaTop_H4P_HDB00-meta_attributes">
+          <nvpair id="cln_SAPHanaTop_H4P_HDB00-meta_attributes-clone-node-max" name="clone-node-max" value="1"/>
+          <nvpair id="cln_SAPHanaTop_H4P_HDB00-meta_attributes-interleave" name="interleave" value="true"/>
+        </meta_attributes>
+      <primitive id="rsc_SAPHanaTop_H4P_HDB00" class="ocf" type="SAPHanaTopology" provider="suse">
+        <instance_attributes id="rsc_SAPHanaTop_H4P_HDB00-instance_attributes">
+          <nvpair id="rsc_SAPHanaTop_H4P_HDB00-instance_attributes-SID" name="SID" value="H4P"/>
+          <nvpair id="rsc_SAPHanaTop_H4P_HDB00-instance_attributes-InstanceNumber" name="InstanceNumber" value="00"/>
+        </instance_attributes>
+        <operations>
+          <op id="rsc_SAPHanaTop_H4P_HDB00-monitor-10" name="monitor" role="" interval="10" timeout="600"/>
+          <op id="rsc_SAPHanaTop_H4P_HDB00-start-0" name="start" role="" interval="0" timeout="600"/>
+          <op id="rsc_SAPHanaTop_H4P_HDB00-stop-0" name="stop" role="" interval="0" timeout="300"/>
+        </operations>
+      </primitive>
+      </clone>
+      <master id="msl_SAPHanaCon_H4P_HDB00">
+        <meta_attributes id="msl_SAPHanaCon_H4P_HDB00-meta_attributes">
+          <nvpair id="msl_SAPHanaCon_H4P_HDB00-meta_attributes-master-node-max" name="master-node-max" value="1"/>
+          <nvpair id="msl_SAPHanaCon_H4P_HDB00-meta_attributes-master-max" name="master-max" value="1"/>
+          <nvpair id="msl_SAPHanaCon_H4P_HDB00-meta_attributes-clone-node-max" name="clone-node-max" value="1"/>
+          <nvpair id="msl_SAPHanaCon_H4P_HDB00-meta_attributes-interleave" name="interleave" value="true"/>
+          <nvpair id="msl_SAPHanaCon_H4P_HDB00-meta_attributes-maintenance" name="maintenance" value="false"/>
+        </meta_attributes>
+      <primitive id="rsc_SAPHanaCon_H4P_HDB00" class="ocf" type="SAPHanaController" provider="suse">
+        <instance_attributes id="rsc_SAPHanaCon_H4P_HDB00-instance_attributes">
+          <nvpair id="rsc_SAPHanaCon_H4P_HDB00-instance_attributes-SID" name="SID" value="H4P"/>
+          <nvpair id="rsc_SAPHanaCon_H4P_HDB00-instance_attributes-InstanceNumber" name="InstanceNumber" value="00"/>
+          <nvpair id="rsc_SAPHanaCon_H4P_HDB00-instance_attributes-PREFER_SITE_TAKEOVER" name="PREFER_SITE_TAKEOVER" value="true"/>
+          <nvpair id="rsc_SAPHanaCon_H4P_HDB00-instance_attributes-DUPLICATE_PRIMARY_TIMEOUT" name="DUPLICATE_PRIMARY_TIMEOUT" value="7200"/>
+          <nvpair id="rsc_SAPHanaCon_H4P_HDB00-instance_attributes-AUTOMATED_REGISTER" name="AUTOMATED_REGISTER" value="false"/>
+          <nvpair id="rsc_SAPHanaCon_H4P_HDB00-instance_attributes-HANA_CALL_TIMEOUT" name="HANA_CALL_TIMEOUT" value="120"/>
+        </instance_attributes>
+        <operations>
+          <op id="rsc_SAPHanaCon_H4P_HDB00-start-0" name="start" role="" interval="0" timeout="3600"/>
+          <op id="rsc_SAPHanaCon_H4P_HDB00-stop-0" name="stop" role="" interval="0" timeout="3600"/>
+          <op id="rsc_SAPHanaCon_H4P_HDB00-promote-0" name="promote" role="" interval="0" timeout="900"/>
+          <op id="rsc_SAPHanaCon_H4P_HDB00-demote-0" name="demote" role="" interval="0" timeout="320"/>
+          <op id="rsc_SAPHanaCon_H4P_HDB00-monitor-60" name="monitor" role="Master" interval="60" timeout="700"/>
+          <op id="rsc_SAPHanaCon_H4P_HDB00-monitor-61" name="monitor" role="Slave" interval="61" timeout="700"/>
+        </operations>
+      </primitive>
+      </master>
+      <group id="g_ip_H4P_HDB00">
+      <primitive id="rsc_ip_H4P_HDB00" class="ocf" type="IPaddr2" provider="heartbeat">
+        <instance_attributes id="rsc_ip_H4P_HDB00-instance_attributes">
+          <nvpair id="rsc_ip_H4P_HDB00-instance_attributes-ip" name="ip" value="10.0.0.10"/>
+        </instance_attributes>
+        <meta_attributes id="rsc_ip_H4P_HDB00-meta_attributes">
+          <nvpair id="rsc_ip_H4P_HDB00-meta_attributes-target-role" name="target-role" value="Started"/>
+        </meta_attributes>
+        <operations>
+          <op id="rsc_ip_H4P_HDB00-operations-monitor-10s" name="monitor" role="" interval="10s" timeout="20s"/>
+          <op id="rsc_ip_H4P_HDB00-operations-start-0s" name="start" role="" interval="0s" timeout="20s"/>
+          <op id="rsc_ip_H4P_HDB00-operations-stop-0s" name="stop" role="" interval="0s" timeout="20s"/>
+        </operations>
+      </primitive>
+      <primitive id="rsc_nc_H4P_HDB00" class="ocf" type="azure-lb" provider="heartbeat">
+        <instance_attributes id="rsc_nc_H4P_HDB00-instance_attributes">
+          <nvpair id="rsc_nc_H4P_HDB00-instance_attributes-port" name="port" value="62500"/>
+        </instance_attributes>
+        <meta_attributes id="rsc_nc_H4P_HDB00-meta_attributes">
+          <nvpair id="rsc_nc_H4P_HDB00-meta_attributes-resource-stickiness" name="resource-stickiness" value="0"/>
+        </meta_attributes>
+        <operations>
+          <op id="rsc_nc_H4P_HDB00-monitor-10" name="monitor" role="" interval="10" timeout="20s"/>
+          <op id="rsc_nc_H4P_HDB00-start-0s" name="start" role="" interval="0s" timeout="20s"/>
+          <op id="rsc_nc_H4P_HDB00-stop-0s" name="stop" role="" interval="0s" timeout="20s"/>
+        </operations>
+      </primitive>
+      </group>
+      <primitive id="stonith-sbd" class="stonith" type="external/sbd" provider="">
+        <operations>
+          <op id="stonith-sbd-monitor-3600" name="monitor" role="" interval="3600" timeout="20"/>
+          <op id="stonith-sbd-start-0s" name="start" role="" interval="0s" timeout="20"/>
+          <op id="stonith-sbd-stop-0s" name="stop" role="" interval="0s" timeout="15"/>
+        </operations>
+      </primitive>
+    </resources>
+    <constraints>
+      <rsc_location id="SAPHanaCon_not_on_majority_maker" node="vms4prdmm" rsc="msl_SAPHanaCon_H4P_HDB00" role="" score="-INFINITY"/>
+      <rsc_location id="SAPHanaTop_not_on_majority_maker" node="vms4prdmm" rsc="cln_SAPHanaTop_H4P_HDB00" role="" score="-INFINITY"/>
+    </constraints>
+  </configuration>
+</cib>
+"""
+[[commands]]
+matches = "crm_mon -X --inactive"
+output = """
+<crm_mon version="2.1.5+20221208.a3f44794f-150500.6.14.4">
+  <summary>
+    <nodes_configured number="5"/>
+    <last_change time="Tue Jan 23 12:45:53 2024"/>
+    <resources_configured number="13" disabled="0" blocked="0"/>
+    <cluster_options stonith-enabled="true"/>
+  </summary>
+  <nodes>
+    <node name="vms4prdhdb01" id="1" online="true" standby="false" standby_onfail="false" maintenance="false" pending="false" unclean="false" shutdown="false" expected_up="true" is_dc="true" resources_running="2" type="member"/>
+    <node name="vms4prdhdb02" id="2" online="true" standby="false" standby_onfail="false" maintenance="false" pending="false" unclean="false" shutdown="false" expected_up="true" is_dc="false" resources_running="2" type="member"/>
+    <node name="vms4prdhdb03" id="3" online="true" standby="false" standby_onfail="false" maintenance="false" pending="false" unclean="false" shutdown="false" expected_up="true" is_dc="false" resources_running="4" type="member"/>
+    <node name="vms4prdhdb04" id="4" online="true" standby="false" standby_onfail="false" maintenance="false" pending="false" unclean="false" shutdown="false" expected_up="true" is_dc="false" resources_running="2" type="member"/>
+    <node name="vms4prdmm" id="5" online="true" standby="false" standby_onfail="false" maintenance="false" pending="false" unclean="false" shutdown="false" expected_up="true" is_dc="false" resources_running="1" type="member"/>
+  </nodes>
+  <resources>
+      <resource id="stonith-sbd" resource_agent="stonith:external/sbd" role="Started" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vms4prdmm" id="5" cached="true"/>
+      </resource>
+    <clone id="cln_SAPHanaTop_H4P_HDB00" multi_state="false" managed="true" failed="false" failure_ignored="false" unique="false">
+      <resource id="rsc_SAPHanaTop_H4P_HDB00" resource_agent="ocf::suse:SAPHanaTopology" role="Started" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vms4prdhdb01" id="1" cached="true"/>
+      </resource>
+      <resource id="rsc_SAPHanaTop_H4P_HDB00" resource_agent="ocf::suse:SAPHanaTopology" role="Started" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vms4prdhdb02" id="2" cached="true"/>
+      </resource>
+      <resource id="rsc_SAPHanaTop_H4P_HDB00" resource_agent="ocf::suse:SAPHanaTopology" role="Started" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vms4prdhdb04" id="4" cached="true"/>
+      </resource>
+      <resource id="rsc_SAPHanaTop_H4P_HDB00" resource_agent="ocf::suse:SAPHanaTopology" role="Started" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vms4prdhdb03" id="3" cached="true"/>
+      </resource>
+      <resource id="rsc_SAPHanaTop_H4P_HDB00" resource_agent="ocf::suse:SAPHanaTopology" role="Stopped" active="false" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="0">
+      </resource>
+    </clone>
+    <clone id="msl_SAPHanaCon_H4P_HDB00" multi_state="true" managed="true" failed="false" failure_ignored="false" unique="false">
+      <resource id="rsc_SAPHanaCon_H4P_HDB00" resource_agent="ocf::suse:SAPHanaController" role="Slave" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vms4prdhdb01" id="1" cached="true"/>
+      </resource>
+      <resource id="rsc_SAPHanaCon_H4P_HDB00" resource_agent="ocf::suse:SAPHanaController" role="Slave" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vms4prdhdb02" id="2" cached="true"/>
+      </resource>
+      <resource id="rsc_SAPHanaCon_H4P_HDB00" resource_agent="ocf::suse:SAPHanaController" role="Slave" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vms4prdhdb04" id="4" cached="true"/>
+      </resource>
+      <resource id="rsc_SAPHanaCon_H4P_HDB00" resource_agent="ocf::suse:SAPHanaController" role="Master" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vms4prdhdb03" id="3" cached="true"/>
+      </resource>
+      <resource id="rsc_SAPHanaCon_H4P_HDB00" resource_agent="ocf::suse:SAPHanaController" role="Stopped" active="false" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="0">
+      </resource>
+    </clone>
+    <group id="g_ip_H4P_HDB00">
+      <resource id="rsc_ip_H4P_HDB00" resource_agent="ocf::heartbeat:IPaddr2" role="Started" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vms4prdhdb03" id="3" cached="true"/>
+      </resource>
+      <resource id="rsc_nc_H4P_HDB00" resource_agent="ocf::heartbeat:azure-lb" role="Started" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vms4prdhdb03" id="3" cached="true"/>
+      </resource>
+    </group>
+  </resources>
+  <node_attributes>
+    <node name="vms4prdhdb01">
+      <attribute name="hana_h4p_clone_state" value="DEMOTED"/>
+      <attribute name="hana_h4p_gra" value="2.0"/>
+      <attribute name="hana_h4p_gsh" value="2.2"/>
+      <attribute name="hana_h4p_roles" value="master1:master:worker:master"/>
+      <attribute name="hana_h4p_site" value="ONE"/>
+      <attribute name="master-rsc_SAPHanaCon_H4P_HDB00" value="100"/>
+    </node>
+    <node name="vms4prdhdb02">
+      <attribute name="hana_h4p_clone_state" value="DEMOTED"/>
+      <attribute name="hana_h4p_gra" value="2.0"/>
+      <attribute name="hana_h4p_gsh" value="2.2"/>
+      <attribute name="hana_h4p_roles" value="slave:slave:worker:slave"/>
+      <attribute name="hana_h4p_site" value="ONE"/>
+      <attribute name="master-rsc_SAPHanaCon_H4P_HDB00" value="-12200"/>
+    </node>
+    <node name="vms4prdhdb03">
+      <attribute name="hana_h4p_clone_state" value="PROMOTED"/>
+      <attribute name="hana_h4p_gra" value="2.0"/>
+      <attribute name="hana_h4p_gsh" value="2.2"/>
+      <attribute name="hana_h4p_roles" value="master1:master:worker:master"/>
+      <attribute name="hana_h4p_site" value="TWO"/>
+      <attribute name="master-rsc_SAPHanaCon_H4P_HDB00" value="150"/>
+    </node>
+    <node name="vms4prdhdb04">
+      <attribute name="hana_h4p_clone_state" value="DEMOTED"/>
+      <attribute name="hana_h4p_gra" value="2.0"/>
+      <attribute name="hana_h4p_gsh" value="2.2"/>
+      <attribute name="hana_h4p_roles" value="slave:slave:worker:slave"/>
+      <attribute name="hana_h4p_site" value="TWO"/>
+      <attribute name="master-rsc_SAPHanaCon_H4P_HDB00" value="-10000"/>
+    </node>
+  </node_attributes>
+  <node_history>
+    <node name="vms4prdhdb01">
+      <resource_history id="rsc_SAPHanaTop_H4P_HDB00" migration-threshold="50" fail-count="0"/>
+      <resource_history id="rsc_SAPHanaCon_H4P_HDB00" migration-threshold="50" fail-count="0"/>
+    </node>
+    <node name="vms4prdhdb02">
+      <resource_history id="rsc_SAPHanaTop_H4P_HDB00" migration-threshold="50" fail-count="0"/>
+      <resource_history id="rsc_SAPHanaCon_H4P_HDB00" migration-threshold="50" fail-count="0"/>
+    </node>
+    <node name="vms4prdhdb04">
+      <resource_history id="rsc_SAPHanaTop_H4P_HDB00" migration-threshold="50" fail-count="0"/>
+      <resource_history id="rsc_SAPHanaCon_H4P_HDB00" migration-threshold="50" fail-count="0"/>
+    </node>
+    <node name="vms4prdhdb03">
+      <resource_history id="rsc_ip_H4P_HDB00" migration-threshold="50" fail-count="0"/>
+      <resource_history id="rsc_nc_H4P_HDB00" migration-threshold="50" fail-count="0"/>
+      <resource_history id="rsc_SAPHanaTop_H4P_HDB00" migration-threshold="50" fail-count="0"/>
+      <resource_history id="rsc_SAPHanaCon_H4P_HDB00" migration-threshold="50" fail-count="0"/>
+    </node>
+    <node name="vms4prdmm">
+      <resource_history id="stonith-sbd" migration-threshold="50" fail-count="0"/>
+      <resource_history id="rsc_nc_H4P_HDB00" migration-threshold="50" fail-count="0"/>
+      <resource_history id="rsc_ip_H4P_HDB00" migration-threshold="50" fail-count="0"/>
+      <resource_history id="rsc_SAPHanaCon_H4P_HDB00" migration-threshold="50" fail-count="0"/>
+    </node>
+  </node_history>
+</crm_mon>
+"""
+[[commands]]
+matches = "crm_mon -1"
+output = """
+Cluster Summary:
+  * Stack: corosync
+"""
+[[commands]]
+matches = "crmadmin -qD"
+output = """
+vms4prdhdb01"""
+[[commands]]
+matches = "crmadmin -qS vms4prdhdb01"
+output = """
+S_IDLE"""
+[[commands]]
+matches = "sbd -d /dev/disk/by-id/scsi-1LIO-ORG_sbdnfs:8d523830-a598-4568-b1d2-426286dbbdd4 dump"
+output = """
+== dump of header Header ==
+2.1
+== dump of header SectorSize ==
+512
+== dump of header Slots ==
+255
+== dump of header TimeoutAllocate ==
+2
+== dump of header TimeoutLoop ==
+1
+== dump of header TimeoutMsgwait ==
+120
+== dump of header TimeoutWatchdog ==
+60
+== dump of header Uuid ==
+2c9aa9d0-d57b-49e2-8177-5c179e324068"""
+[[commands]]
+matches = "sbd -d /dev/disk/by-id/scsi-1LIO-ORG_sbdnfs:8d523830-a598-4568-b1d2-426286dbbdd4 list"
+output = """
+0	vms4prdhdb01	clear
+1	vms4prdhdb02	clear
+2	vms4prdhdb03	clear
+3	vms4prdhdb04	clear
+4	vms4prdmm	clear"""
+[[commands]]
+matches = "saptune --format json status"
+output = """
+{
+  "$schema": "file:///usr/share/saptune/schemas/1.0/saptune_status.schema.json",
+  "argv": "saptune --format json status",
+  "command": "status",
+  "exit code": 0,
+  "messages": [
+    {
+      "message": "sysctl.go:75: Parameter 'fs.aio-max-nr' additional defined in the following sysctl config file /usr/lib/sysctl.d/99-sysctl.conf(18446744073709551615).\n",
+      "priority": "WARNING"
+    },
+    {
+      "message": "ini.go:310: block device related section settings detected: Traversing all block devices can take a considerable amount of time.\n",
+      "priority": "NOTICE"
+    }
+  ],
+  "pid": 7514,
+  "publish time": "2024-01-23 12:49:31.632",
+  "result": {
+    "Notes applied": [
+      "941735",
+      "1771258",
+      "1868829",
+      "1980196",
+      "2578899",
+      "2684254",
+      "2382421",
+      "2534844",
+      "2993054",
+      "1656250"
+    ],
+    "Notes applied by Solution": [
+      {
+        "Note list": [
+          "941735",
+          "1771258",
+          "1868829",
+          "1980196",
+          "2578899",
+          "2684254",
+          "2382421",
+          "2534844",
+          "2993054",
+          "1656250"
+        ],
+        "Solution ID": "HANA"
+      }
+    ],
+    "Notes enabled": [
+      "941735",
+      "1771258",
+      "1868829",
+      "1980196",
+      "2578899",
+      "2684254",
+      "2382421",
+      "2534844",
+      "2993054",
+      "1656250"
+    ],
+    "Notes enabled additionally": [],
+    "Notes enabled by Solution": [
+      {
+        "Note list": [
+          "941735",
+          "1771258",
+          "1868829",
+          "1980196",
+          "2578899",
+          "2684254",
+          "2382421",
+          "2534844",
+          "2993054",
+          "1656250"
+        ],
+        "Solution ID": "HANA"
+      }
+    ],
+    "Solution applied": [
+      {
+        "Solution ID": "HANA",
+        "applied partially": false
+      }
+    ],
+    "Solution enabled": [
+      "HANA"
+    ],
+    "configured version": "3",
+    "package version": "3.1.1",
+    "remember message": "\nThe systemd system state is NOT ok.\nPlease call 'saptune check' to get guidance to resolve the issues!\n\n",
+    "services": {
+      "sapconf": [],
+      "saptune": [
+        "enabled",
+        "active"
+      ],
+      "tuned": [
+        "disabled",
+        "inactive"
+      ]
+    },
+    "staging": {
+      "Notes staged": [],
+      "Solutions staged": [],
+      "staging enabled": false
+    },
+    "systemd system state": "degraded",
+    "tuning state": "compliant",
+    "virtualization": "microsoft"
+  }
+}"""
+[[commands]]
+matches = "rpm -q --qf %{VERSION} saptune"
+output = """
+3.1.1"""
+[[commands]]
+matches = "SUSEConnect -s"
+output = """
+[
+  {
+    "arch": "x86_64",
+    "identifier": "SLES_SAP",
+    "status": "Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-ha",
+    "status": "Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-basesystem",
+    "status": "Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-containers",
+    "status": "Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-desktop-applications",
+    "status": "Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-development-tools",
+    "status": "Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-live-patching",
+    "status": "Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-public-cloud",
+    "status": "Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-python3",
+    "status": "Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-sap-applications",
+    "status": "Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-server-applications",
+    "status": "Registered",
+    "version": "15.5"
+  },
+  {
+    "arch": "x86_64",
+    "identifier": "sle-module-web-scripting",
+    "status": "Registered",
+    "version": "15.5"
+  }
+]"""
+[[commands]]
+matches = "sappfpar SAPSYSTEMNAME SAPGLOBALHOST SAPFQDN SAPDBHOST dbs/hdb/dbname dbs/hdb/schema rdisp/msp/msserv rdisp/msserv_internal name=H4P"
+output = """
+SAPSYSTEMNAME=H4P
+SAPGLOBALHOST=vms4prdhdb01
+SAPFQDN=
+SAPDBHOST=vms4prdhdb01
+dbs/hdb/dbname=H4P
+dbs/hdb/schema=SAPHANADB
+rdisp/msp/msserv=
+rdisp/msserv_internal=
+"""
+[[commands]]
+matches = "corosync-cmapctl -b"
+output = """
+totem.cluster_name (str) = hana_scale_out_cluster
+nodelist.node.1.ring0_addr (str) = vms4prdhdb01
+nodelist.node.1.nodeid (u32) = 1
+nodelist.node.2.ring0_addr (str) = vms4prdhdb02
+nodelist.node.2.nodeid (u32) = 2
+nodelist.node.3.ring0_addr (str) = vms4prdhdb03
+nodelist.node.3.nodeid (u32) = 3
+nodelist.node.4.ring0_addr (str) = vms4prdhdb04
+nodelist.node.4.nodeid (u32) = 4
+nodelist.node.5.ring0_addr (str) = vms4prdmm
+nodelist.node.5.nodeid (u32) = 5"""
+[[commands]]
+matches = "/sbin/sysctl -a"
+output = """
+kernel.hostname = vms4prdhdb01
+kernel.osrelease = 5.3.18-150300-default
+kernel.os_type = Linux
+kernel.sched_autogroup_enabled = 1
+kernel.threads-max = 31107
+fs.file-max = 1000000
+fs.aio-max-nr = 1048576
+vm.swappiness = 60
+vm.dirty_ratio = 20
+vm.dirty_background_ratio = 10
+vm.overcommit_memory = 0
+net.core.somaxconn = 4096
+net.ipv4.tcp_max_syn_backlog = 8192
+net.ipv4.tcp_slow_start_after_idle = 0
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.ip_local_port_range = 32768	60999
+net.ipv4.tcp_syncookies = 1
+net.ipv4.conf.all.rp_filter = 2
+kernel.shmmax = 18446744073709551615
+kernel.shmall = 18446744073709551615
+kernel.msgmax = 8192
+kernel.msgmnb = 16384
+kernel.pid_max = 32768
+kernel.random.uuid = 00000000-0000-0000-0000-000000000000
+net.ipv4.tcp_keepalive_time = 7200
+net.ipv4.tcp_keepalive_intvl = 75
+net.ipv4.tcp_keepalive_probes = 9
+sunrpc.tcp_slot_tbl_entries = 16
+sunrpc.tcp_max_slot_table_entries = 65536
+"""
+[[commands]]
+matches = "/usr/bin/df -k -P --"
+output = """
+Filesystem     1K-blocks    Used Available Use% Mounted on
+/dev/sda1       52428800 20971520  31457280  40% /
+/dev/sda2      104857600 52428800  52428800  50% /hana/data
+/dev/sda3      104857600 52428800  52428800  50% /hana/log
+nfs:/hana/shared 209715200 52428800 157286400  25% /hana/shared
+/dev/sda4       52428800 10485760  41943040  20% /usr/sap"""
+[[commands]]
+matches = "su - "
+output = """
+name:       disp+work
+kernel release       753.00.00
+compilation mode      64BIT
+patch number          1200
+features sapwebdisp
+"""
+[[commands]]
+matches = "saphostctrl -function Ping"
+output = """
+SUCCESS ( 42 usec)
+"""
+[[commands]]
+matches = "saphostctrl -function ListInstances"
+output = """
+    Inst Info: H4P - 00 - vms4prdhdb01 - 30000, patch 1234, changelist 5678"""
+[[commands]]
+matches = "sudo -l -U"
+output = """
+User h4padm may run the following commands on this host:
+    (ALL : ALL) NOPASSWD: ALL
+"""

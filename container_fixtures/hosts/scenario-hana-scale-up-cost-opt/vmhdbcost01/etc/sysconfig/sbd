@@ -1,0 +1,12 @@
+# Generated from recording
+
+SBD_DELAY_START="216"
+SBD_DEVICE="/dev/sdj"
+SBD_MOVE_TO_ROOT_CGROUP="auto"
+SBD_OPTS=""
+SBD_PACEMAKER="yes"
+SBD_STARTMODE="always"
+SBD_SYNC_RESOURCE_STARTUP="yes"
+SBD_TIMEOUT_ACTION="flush,reboot"
+SBD_WATCHDOG_DEV="/dev/watchdog"
+SBD_WATCHDOG_TIMEOUT="60"

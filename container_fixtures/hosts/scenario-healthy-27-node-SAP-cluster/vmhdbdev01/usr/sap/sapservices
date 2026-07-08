@@ -1,0 +1,1 @@
+/usr/sap/HDD/SYS/exe/run/sapstartsrv pf=/usr/sap/HDD/HDB10/profile/HDD_HDB106 lifecycle_mgr

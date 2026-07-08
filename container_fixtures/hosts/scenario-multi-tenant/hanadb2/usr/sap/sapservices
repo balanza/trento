@@ -1,0 +1,1 @@
+/usr/sap/DB1/SYS/exe/run/sapstartsrv pf=/usr/sap/DB1/HDB03/profile/DB1_HDB036 lifecycle_mgr

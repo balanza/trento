@@ -1,0 +1,1 @@
+/usr/sap/TG5/SYS/exe/run/sapstartsrv pf=/usr/sap/TG5/HDB30/profile/TG5_HDB306 lifecycle_mgr

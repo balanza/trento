@@ -79,12 +79,25 @@ discovered and deployed (each subdirectory = one scenario). The host-fixtures
 Helm release lists every host from every scenario in a single deployment.
 
 Options:
-  --build <csv>          Comma-separated subset of services to (re)build
-                         (valid: web, wanda, checks, agent). Any service
-                         whose local image is missing is auto-added to this
-                         set, so first runs work without flags. Every known
-                         service image present locally is imported into the
-                         k3d cluster on every run.
+  --build <csv>          Comma-separated subset of images to (re)build
+                         (valid: all, web, wanda, checks, fixtures). Use
+                         "all" as a shortcut for "web,wanda,checks,fixtures".
+                         Any
+                         trento service (web/wanda/checks) whose local image
+                         is missing is auto-added to this set, so first runs
+                         work without flags. Every trento service image
+                         present locally is imported into the cluster on
+                         every run.
+
+                         "fixtures" gates the host-simulation images built
+                         from container_fixtures/hosts/: the shared
+                         local/agent:dev image and one local/files:<scenario>-<host>
+                         image per host. They are rebuilt ONLY when "fixtures"
+                         is in the --build list; otherwise the already-built
+                         images are reused (imported) as-is. If a required
+                         host-fixture image is missing locally and "fixtures"
+                         was not passed, the script errors and tells you to
+                         build them (--build fixtures).
   --release-name <name>  Helm release name (default: trento).
   --namespace <ns>       Kubernetes namespace (default: default).
   -h, --help             Show this help and exit.
@@ -173,6 +186,18 @@ build_includes() {
   return 1
 }
 
+# True when the user asked to (re)build the host-fixture images (accepts both
+# "fixture" and "fixtures" as the token).
+build_includes_fixtures() {
+  local s
+  for s in "${build_services[@]:-}"; do
+    case "$s" in
+      fixture|fixtures) return 0 ;;
+    esac
+  done
+  return 1
+}
+
 # Maps a service name to its expected local image tag. Knowing the canonical
 # image lets the script (a) auto-build a service whose image is missing and
 # (b) always import the image into the cluster regardless of whether it was
@@ -180,7 +205,6 @@ build_includes() {
 service_image() {
   case "$1" in
     web|wanda|checks) echo "${REGISTRY_PREFIX}/trento-${1}:${TAG}" ;;
-    agent)            echo "${HOSTS_AGENT_IMAGE}" ;;
     *) return 1 ;;
   esac
 }
@@ -305,8 +329,11 @@ if [[ -n "$build_csv" ]]; then
   [[ ${#build_services[@]} -gt 0 ]] || die "--build must list at least one service"
   for svc in "${build_services[@]}"; do
     case "$svc" in
-      web|wanda|checks|agent) ;;
-      *) die "unknown service: '$svc' (valid: web, wanda, checks, agent)" ;;
+      all)
+        build_services=(web wanda checks fixtures)
+        break ;;
+      web|wanda|checks|fixture|fixtures) ;;
+      *) die "unknown service: '$svc' (valid: all, web, wanda, checks, fixtures)" ;;
     esac
   done
 else
@@ -408,11 +435,14 @@ if [[ "$cluster_type" == "k3s" ]]; then
 fi
 readonly K3S_IMPORT_CMD K3S_IMPORT_USE_SUDO
 
-# Auto-add any service whose local image is missing. This makes first runs
-# (and recoveries from `docker image rm`) work without the user having to
-# remember to pass --build for every service. Runs before local-contracts
-# pre-flight so the manifest-clean check covers auto-added services too.
-for svc in web wanda checks agent; do
+# Auto-add any trento service whose local image is missing. This makes first
+# runs (and recoveries from `docker image rm`) work without the user having to
+# remember to pass --build for every service. The host-fixture images
+# (local/agent:dev, local/files:*) are NOT auto-built — gate them explicitly
+# with --build fixtures; if missing they error later, not here. Runs before
+# local-contracts pre-flight so the manifest-clean check covers auto-added
+# services too.
+for svc in web wanda checks; do
   image="$(service_image "$svc")"
   if ! image_exists_locally "$image" && ! build_includes "$svc"; then
     echo ">> image '${image}' not found locally; auto-adding '${svc}' to --build"
@@ -437,10 +467,11 @@ if should_use_local_contracts; then
   else
     echo ">> contracts: on branch '${contracts_branch}' — using local ./contracts for whatever is in --build"
   fi
+  # The agent is a contracts consumer too, but it is rebuilt as part of the
+  # "fixtures" build path; its go.mod clean-check is enforced there, not here.
   for svc in "${build_services[@]:-}"; do
     case "$svc" in
       web|wanda) assert_manifest_clean "$svc" "mix.exs" ;;
-      agent)     assert_manifest_clean "agent" "go.mod" ;;
     esac
   done
 else
@@ -565,8 +596,15 @@ api_key="$(kubectl exec -n "$namespace" "$web_pod" -- \
 echo ">> discovered scenarios: ${HOSTS_SCENARIOS[*]}"
 echo ">> total hosts across all scenarios: ${#ALL_HOSTS[@]} (${ALL_HOSTS[*]})"
 
-if build_includes agent; then
+# Host-fixture images (built from container_fixtures/hosts/):
+#   - local/agent:dev                  shared agent image (Dockerfile.agent)
+#   - local/files:<scenario>-<host>    per-host filesystem overlay (Dockerfile.filesystem)
+# These are rebuilt ONLY when "fixtures" is in --build. Otherwise the
+# already-built images are reused (imported) as-is; if a required image is
+# missing locally, we error and tell the user to build with --build fixtures.
+if build_includes_fixtures; then
   if [[ "$use_local_contracts" == "true" ]]; then
+    assert_manifest_clean "agent" "go.mod"
     apply_local_contracts_to_agent
   fi
 
@@ -575,22 +613,29 @@ if build_includes agent; then
     -f "$HOSTS_AGENT_DOCKERFILE" \
     -t "$HOSTS_AGENT_IMAGE" \
     "$PROJECT_ROOT"
+else
+  if ! image_exists_locally "$HOSTS_AGENT_IMAGE"; then
+    die "host-fixture image '${HOSTS_AGENT_IMAGE}' not found locally. Build the fixtures with: --build fixtures"
+  fi
 fi
-
-# Always import the agent image (whether built this run or pre-existing).
+# Always import the agent image (built this run, or pre-existing).
 import_to_cluster "$HOSTS_AGENT_IMAGE"
 
 for host in "${ALL_HOSTS[@]}"; do
   scenario="${HOST_SCENARIO[$host]}"
   files_image="${REGISTRY_PREFIX}/files:${scenario}-${host}"
 
-  echo ">> building ${files_image} (scenario: ${scenario})"
-  docker build \
-    -f "$HOSTS_FILES_DOCKERFILE" \
-    --build-arg "SCENARIO=${scenario}" \
-    --build-arg "HOST=${host}" \
-    -t "$files_image" \
-    "$PROJECT_ROOT"
+  if build_includes_fixtures; then
+    echo ">> building ${files_image} (scenario: ${scenario})"
+    docker build \
+      -f "$HOSTS_FILES_DOCKERFILE" \
+      --build-arg "SCENARIO=${scenario}" \
+      --build-arg "HOST=${host}" \
+      -t "$files_image" \
+      "$PROJECT_ROOT"
+  elif ! image_exists_locally "$files_image"; then
+    die "host-fixture image '${files_image}' not found locally. Build the fixtures with: --build fixtures"
+  fi
 
   import_to_cluster "$files_image"
 done

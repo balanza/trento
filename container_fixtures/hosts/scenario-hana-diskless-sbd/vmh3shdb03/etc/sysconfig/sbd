@@ -1,0 +1,11 @@
+# Generated from recording
+
+SBD_DELAY_START="yes"
+SBD_MOVE_TO_ROOT_CGROUP="auto"
+SBD_OPTS="-C 600 -Z"
+SBD_PACEMAKER="yes"
+SBD_STARTMODE="always"
+SBD_SYNC_RESOURCE_STARTUP="yes"
+SBD_TIMEOUT_ACTION="flush,crashdump"
+SBD_WATCHDOG_DEV="/dev/watchdog"
+SBD_WATCHDOG_TIMEOUT="5"

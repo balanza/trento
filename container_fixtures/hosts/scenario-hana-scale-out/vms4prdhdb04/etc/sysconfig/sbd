@@ -1,0 +1,12 @@
+# Generated from recording
+
+SBD_DELAY_START="216"
+SBD_DEVICE="/dev/disk/by-id/scsi-1LIO-ORG_sbdnfs:8d523830-a598-4568-b1d2-426286dbbdd4"
+SBD_MOVE_TO_ROOT_CGROUP="auto"
+SBD_OPTS=""
+SBD_PACEMAKER="yes"
+SBD_STARTMODE="always"
+SBD_SYNC_RESOURCE_STARTUP="yes"
+SBD_TIMEOUT_ACTION="flush,reboot"
+SBD_WATCHDOG_DEV="/dev/watchdog"
+SBD_WATCHDOG_TIMEOUT="60"

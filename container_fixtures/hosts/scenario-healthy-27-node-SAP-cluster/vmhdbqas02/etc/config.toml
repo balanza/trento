@@ -1,0 +1,403 @@
+[[commands]]
+matches = "dmidecode -s chassis-asset-tag"
+output = """
+00000000-0000-0000-0000-000000000000"""
+[[commands]]
+matches = "dmidecode -s system-manufacturer"
+output = """
+Microsoft Corporation"""
+[[commands]]
+matches = "dmidecode -s bios-vendor"
+output = """
+Microsoft Corporation"""
+[[commands]]
+matches = "dmidecode -s system-version"
+output = """
+Microsoft Corporation Hyper-V UEFI Release v4.1"""
+[[commands]]
+matches = "dmidecode"
+output = """
+Microsoft Corporation"""
+[[commands]]
+matches = "cibadmin --query --local"
+output = """
+<cib admin_epoch="0" epoch="0" num_updates="0">
+  <configuration>
+    <crm_config>
+      <cluster_property_set id="cib-bootstrap-options">
+        <nvpair id="cib-bootstrap-options-have-watchdog" name="have-watchdog" value="true"/>
+        <nvpair id="cib-bootstrap-options-dc-version" name="dc-version" value="2.0.5+20201202.ba59be712-4.13.1-2.0.5+20201202.ba59be712"/>
+        <nvpair id="cib-bootstrap-options-cluster-infrastructure" name="cluster-infrastructure" value="corosync"/>
+        <nvpair id="cib-bootstrap-options-cluster-name" name="cluster-name" value="hana_cluster_2"/>
+        <nvpair id="cib-bootstrap-options-stonith-enabled" name="stonith-enabled" value="true"/>
+        <nvpair id="cib-bootstrap-options-stonith-timeout" name="stonith-timeout" value="144s"/>
+        <nvpair id="cib-bootstrap-options-maintenance-mode" name="maintenance-mode" value="false"/>
+        <nvpair id="SAPHanaSR-hana_hdq_site_srHook_WDF" name="hana_hdq_site_srHook_WDF" value="SOK"/>
+      </cluster_property_set>
+    </crm_config>
+    <nodes>
+      <node id="1" uname="vmhdbqas01">
+        <instance_attributes id="nodes-1">
+          <nvpair id="nodes-1-lpa_hdq_lpt" name="lpa_hdq_lpt" value="1643125033"/>
+          <nvpair id="nodes-1-hana_hdq_vhost" name="hana_hdq_vhost" value="vmhdbqas01"/>
+          <nvpair id="nodes-1-hana_hdq_site" name="hana_hdq_site" value="NBG"/>
+          <nvpair id="nodes-1-hana_hdq_op_mode" name="hana_hdq_op_mode" value="logreplay"/>
+          <nvpair id="nodes-1-hana_hdq_srmode" name="hana_hdq_srmode" value="sync"/>
+          <nvpair id="nodes-1-hana_hdq_remoteHost" name="hana_hdq_remoteHost" value="vmhdbqas02"/>
+        </instance_attributes>
+      </node>
+      <node id="2" uname="vmhdbqas02">
+        <instance_attributes id="nodes-2">
+          <nvpair id="nodes-2-lpa_hdq_lpt" name="lpa_hdq_lpt" value="30"/>
+          <nvpair id="nodes-2-hana_hdq_op_mode" name="hana_hdq_op_mode" value="logreplay"/>
+          <nvpair id="nodes-2-hana_hdq_vhost" name="hana_hdq_vhost" value="vmhdbqas02"/>
+          <nvpair id="nodes-2-hana_hdq_remoteHost" name="hana_hdq_remoteHost" value="vmhdbqas01"/>
+          <nvpair id="nodes-2-hana_hdq_site" name="hana_hdq_site" value="WDF"/>
+          <nvpair id="nodes-2-hana_hdq_srmode" name="hana_hdq_srmode" value="sync"/>
+        </instance_attributes>
+      </node>
+    </nodes>
+    <resources>
+      <clone id="cln_SAPHanaTopology_HDQ_HDB10">
+        <meta_attributes id="cln_SAPHanaTopology_HDQ_HDB10-meta_attributes">
+          <nvpair id="cln_SAPHanaTopology_HDQ_HDB10-meta_attributes-clone-node-max" name="clone-node-max" value="1"/>
+          <nvpair id="cln_SAPHanaTopology_HDQ_HDB10-meta_attributes-interleave" name="interleave" value="true"/>
+        </meta_attributes>
+      <primitive id="rsc_SAPHanaTopology_HDQ_HDB10" class="ocf" type="SAPHanaTopology" provider="suse">
+        <instance_attributes id="rsc_SAPHanaTopology_HDQ_HDB10-instance_attributes">
+          <nvpair id="rsc_SAPHanaTopology_HDQ_HDB10-instance_attributes-SID" name="SID" value="HDQ"/>
+          <nvpair id="rsc_SAPHanaTopology_HDQ_HDB10-instance_attributes-InstanceNumber" name="InstanceNumber" value="10"/>
+        </instance_attributes>
+        <operations>
+          <op id="rsc_SAPHanaTopology_HDQ_HDB10-monitor-10" name="monitor" role="" interval="10" timeout="600"/>
+          <op id="rsc_SAPHanaTopology_HDQ_HDB10-start-0" name="start" role="" interval="0" timeout="600"/>
+          <op id="rsc_SAPHanaTopology_HDQ_HDB10-stop-0" name="stop" role="" interval="0" timeout="300"/>
+        </operations>
+      </primitive>
+      </clone>
+      <master id="msl_SAPHana_HDQ_HDB10">
+        <meta_attributes id="msl_SAPHana_HDQ_HDB10-meta_attributes">
+          <nvpair id="msl_SAPHana_HDQ_HDB10-meta_attributes-clone-max" name="clone-max" value="2"/>
+          <nvpair id="msl_SAPHana_HDQ_HDB10-meta_attributes-clone-node-max" name="clone-node-max" value="1"/>
+          <nvpair id="msl_SAPHana_HDQ_HDB10-meta_attributes-interleave" name="interleave" value="true"/>
+        </meta_attributes>
+      <primitive id="rsc_SAPHana_HDQ_HDB10" class="ocf" type="SAPHana" provider="suse">
+        <instance_attributes id="rsc_SAPHana_HDQ_HDB10-instance_attributes">
+          <nvpair id="rsc_SAPHana_HDQ_HDB10-instance_attributes-SID" name="SID" value="HDQ"/>
+          <nvpair id="rsc_SAPHana_HDQ_HDB10-instance_attributes-InstanceNumber" name="InstanceNumber" value="10"/>
+          <nvpair id="rsc_SAPHana_HDQ_HDB10-instance_attributes-PREFER_SITE_TAKEOVER" name="PREFER_SITE_TAKEOVER" value="True"/>
+          <nvpair id="rsc_SAPHana_HDQ_HDB10-instance_attributes-AUTOMATED_REGISTER" name="AUTOMATED_REGISTER" value="False"/>
+          <nvpair id="rsc_SAPHana_HDQ_HDB10-instance_attributes-DUPLICATE_PRIMARY_TIMEOUT" name="DUPLICATE_PRIMARY_TIMEOUT" value="7200"/>
+        </instance_attributes>
+        <operations>
+          <op id="rsc_SAPHana_HDQ_HDB10-start-0" name="start" role="" interval="0" timeout="3600"/>
+          <op id="rsc_SAPHana_HDQ_HDB10-stop-0" name="stop" role="" interval="0" timeout="3600"/>
+          <op id="rsc_SAPHana_HDQ_HDB10-promote-0" name="promote" role="" interval="0" timeout="3600"/>
+          <op id="rsc_SAPHana_HDQ_HDB10-monitor-60" name="monitor" role="Master" interval="60" timeout="700"/>
+          <op id="rsc_SAPHana_HDQ_HDB10-monitor-61" name="monitor" role="Slave" interval="61" timeout="700"/>
+        </operations>
+      </primitive>
+      </master>
+      <group id="g_ip_HDQ_HDB10">
+      <primitive id="rsc_ip_HDQ_HDB10" class="ocf" type="IPaddr2" provider="heartbeat">
+        <instance_attributes id="rsc_ip_HDQ_HDB10-instance_attributes">
+          <nvpair id="rsc_ip_HDQ_HDB10-instance_attributes-ip" name="ip" value="10.90.1.13"/>
+          <nvpair id="rsc_ip_HDQ_HDB10-instance_attributes-cidr_netmask" name="cidr_netmask" value="24"/>
+          <nvpair id="rsc_ip_HDQ_HDB10-instance_attributes-nic" name="nic" value="eth0"/>
+        </instance_attributes>
+        <operations>
+          <op id="rsc_ip_HDQ_HDB10-start-0" name="start" role="" interval="0" timeout="20"/>
+          <op id="rsc_ip_HDQ_HDB10-stop-0" name="stop" role="" interval="0" timeout="20"/>
+          <op id="rsc_ip_HDQ_HDB10-monitor-10" name="monitor" role="" interval="10" timeout="20"/>
+        </operations>
+      </primitive>
+      <primitive id="rsc_socat_HDQ_HDB10" class="ocf" type="azure-lb" provider="heartbeat">
+        <instance_attributes id="rsc_socat_HDQ_HDB10-instance_attributes">
+          <nvpair id="rsc_socat_HDQ_HDB10-instance_attributes-port" name="port" value="62510"/>
+        </instance_attributes>
+        <operations>
+          <op id="rsc_socat_HDQ_HDB10-monitor-10" name="monitor" role="" interval="10" timeout="20"/>
+        </operations>
+      </primitive>
+      </group>
+      <primitive id="stonith-sbd" class="stonith" type="external/sbd" provider="">
+        <instance_attributes id="stonith-sbd-instance_attributes">
+          <nvpair id="stonith-sbd-instance_attributes-pcmk_delay_max" name="pcmk_delay_max" value="15"/>
+        </instance_attributes>
+        <operations>
+          <op id="stonith-sbd-monitor-15" name="monitor" role="" interval="15" timeout="15"/>
+        </operations>
+      </primitive>
+    </resources>
+  </configuration>
+</cib>
+"""
+[[commands]]
+matches = "crm_mon -X --inactive"
+output = """
+<crm_mon version="2.1.5+20221208.a3f44794f-150500.6.14.4">
+  <summary>
+    <nodes_configured number="2"/>
+    <last_change time="Tue Jan 25 15:37:13 2022"/>
+    <resources_configured number="7" disabled="0" blocked="0"/>
+    <cluster_options stonith-enabled="true"/>
+  </summary>
+  <nodes>
+    <node name="vmhdbqas01" id="1" online="true" standby="false" standby_onfail="false" maintenance="false" pending="false" unclean="false" shutdown="false" expected_up="true" is_dc="true" resources_running="5" type="member"/>
+    <node name="vmhdbqas02" id="2" online="true" standby="false" standby_onfail="false" maintenance="false" pending="false" unclean="false" shutdown="false" expected_up="true" is_dc="false" resources_running="2" type="member"/>
+  </nodes>
+  <resources>
+      <resource id="stonith-sbd" resource_agent="stonith:external/sbd" role="Started" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vmhdbqas01" id="1" cached="true"/>
+      </resource>
+    <clone id="msl_SAPHana_HDQ_HDB10" multi_state="true" managed="true" failed="false" failure_ignored="false" unique="false">
+      <resource id="rsc_SAPHana_HDQ_HDB10" resource_agent="ocf::suse:SAPHana" role="Master" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vmhdbqas01" id="1" cached="true"/>
+      </resource>
+      <resource id="rsc_SAPHana_HDQ_HDB10" resource_agent="ocf::suse:SAPHana" role="Slave" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vmhdbqas02" id="2" cached="true"/>
+      </resource>
+    </clone>
+    <clone id="cln_SAPHanaTopology_HDQ_HDB10" multi_state="false" managed="true" failed="false" failure_ignored="false" unique="false">
+      <resource id="rsc_SAPHanaTopology_HDQ_HDB10" resource_agent="ocf::suse:SAPHanaTopology" role="Started" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vmhdbqas01" id="1" cached="true"/>
+      </resource>
+      <resource id="rsc_SAPHanaTopology_HDQ_HDB10" resource_agent="ocf::suse:SAPHanaTopology" role="Started" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vmhdbqas02" id="2" cached="true"/>
+      </resource>
+    </clone>
+    <group id="g_ip_HDQ_HDB10">
+      <resource id="rsc_ip_HDQ_HDB10" resource_agent="ocf::heartbeat:IPaddr2" role="Started" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vmhdbqas01" id="1" cached="true"/>
+      </resource>
+      <resource id="rsc_socat_HDQ_HDB10" resource_agent="ocf::heartbeat:azure-lb" role="Started" active="true" orphaned="false" blocked="false" managed="true" failed="false" failure_ignored="false" nodes_running_on="1">
+        <node name="vmhdbqas01" id="1" cached="true"/>
+      </resource>
+    </group>
+  </resources>
+  <node_attributes>
+    <node name="vmhdbqas01">
+      <attribute name="hana_hdq_clone_state" value="PROMOTED"/>
+      <attribute name="hana_hdq_op_mode" value="logreplay"/>
+      <attribute name="hana_hdq_remoteHost" value="vmhdbqas02"/>
+      <attribute name="hana_hdq_roles" value="4:P:master1:master:worker:master"/>
+      <attribute name="hana_hdq_site" value="NBG"/>
+      <attribute name="hana_hdq_srmode" value="sync"/>
+      <attribute name="hana_hdq_sync_state" value="PRIM"/>
+      <attribute name="hana_hdq_version" value="2.00.057.00.1629894416"/>
+      <attribute name="hana_hdq_vhost" value="vmhdbqas01"/>
+      <attribute name="lpa_hdq_lpt" value="1643125033"/>
+      <attribute name="master-rsc_SAPHana_HDQ_HDB10" value="150"/>
+    </node>
+    <node name="vmhdbqas02">
+      <attribute name="hana_hdq_clone_state" value="DEMOTED"/>
+      <attribute name="hana_hdq_op_mode" value="logreplay"/>
+      <attribute name="hana_hdq_remoteHost" value="vmhdbqas01"/>
+      <attribute name="hana_hdq_roles" value="4:S:master1:master:worker:master"/>
+      <attribute name="hana_hdq_site" value="WDF"/>
+      <attribute name="hana_hdq_srmode" value="sync"/>
+      <attribute name="hana_hdq_sync_state" value="SOK"/>
+      <attribute name="hana_hdq_version" value="2.00.057.00.1629894416"/>
+      <attribute name="hana_hdq_vhost" value="vmhdbqas02"/>
+      <attribute name="lpa_hdq_lpt" value="30"/>
+      <attribute name="master-rsc_SAPHana_HDQ_HDB10" value="100"/>
+    </node>
+  </node_attributes>
+  <node_history>
+    <node name="vmhdbqas01">
+      <resource_history id="stonith-sbd" migration-threshold="5000" fail-count="0"/>
+      <resource_history id="rsc_ip_HDQ_HDB10" migration-threshold="5000" fail-count="0"/>
+      <resource_history id="rsc_socat_HDQ_HDB10" migration-threshold="5000" fail-count="0"/>
+      <resource_history id="rsc_SAPHanaTopology_HDQ_HDB10" migration-threshold="5000" fail-count="0"/>
+      <resource_history id="rsc_SAPHana_HDQ_HDB10" migration-threshold="5000" fail-count="0"/>
+    </node>
+    <node name="vmhdbqas02">
+      <resource_history id="rsc_SAPHana_HDQ_HDB10" migration-threshold="5000" fail-count="0"/>
+      <resource_history id="rsc_SAPHanaTopology_HDQ_HDB10" migration-threshold="5000" fail-count="0"/>
+    </node>
+  </node_history>
+</crm_mon>
+"""
+[[commands]]
+matches = "crm_mon -1"
+output = """
+Cluster Summary:
+  * Stack: corosync
+"""
+[[commands]]
+matches = "crmadmin -qD"
+output = """
+vmhdbqas01"""
+[[commands]]
+matches = "crmadmin -qS vmhdbqas01"
+output = """
+S_IDLE"""
+[[commands]]
+matches = "sbd -d /dev/disk/by-id/scsi-360014058d88c7795c6a4b66bc024f4bd dump"
+output = """
+== dump of header Header ==
+2.1
+== dump of header SectorSize ==
+512
+== dump of header Slots ==
+255
+== dump of header TimeoutAllocate ==
+2
+== dump of header TimeoutLoop ==
+1
+== dump of header TimeoutMsgwait ==
+10
+== dump of header TimeoutWatchdog ==
+5
+== dump of header Uuid ==
+246da75b-af59-4135-b980-90bf87815e2e"""
+[[commands]]
+matches = "sbd -d /dev/disk/by-id/scsi-360014058d88c7795c6a4b66bc024f4bd list"
+output = """
+0	vmhdbqas01	clear
+1	vmhdbqas02	clear"""
+[[commands]]
+matches = "rpm -q --qf %{VERSION} saptune"
+output = """
+3.0.0"""
+[[commands]]
+matches = "SUSEConnect -s"
+output = """
+[
+  {
+    "arch": "x86_64",
+    "type": "internal",
+    "status": "Registered",
+    "version": "15.3",
+    "starts_at": "2021-10-18 06:23:46 UTC",
+    "expires_at": "2026-10-18 06:23:46 UTC",
+    "identifier": "SLES_SAP",
+    "subscription_status": "ACTIVE"
+  },
+  {
+    "arch": "x86_64",
+    "status": "Registered",
+    "version": "15.3",
+    "identifier": "sle-module-basesystem"
+  },
+  {
+    "arch": "x86_64",
+    "status": "Registered",
+    "version": "15.3",
+    "identifier": "sle-module-desktop-applications"
+  },
+  {
+    "arch": "x86_64",
+    "status": "Registered",
+    "version": "15.3",
+    "identifier": "sle-module-server-applications"
+  },
+  {
+    "arch": "x86_64",
+    "type": "internal",
+    "status": "Registered",
+    "version": "15.3",
+    "starts_at": "2021-10-18 06:23:46 UTC",
+    "expires_at": "2026-10-18 06:23:46 UTC",
+    "identifier": "sle-ha",
+    "subscription_status": "ACTIVE"
+  },
+  {
+    "arch": "x86_64",
+    "status": "Registered",
+    "version": "15.3",
+    "identifier": "sle-module-sap-applications"
+  },
+  {
+    "arch": "x86_64",
+    "status": "Registered",
+    "version": "15.3",
+    "identifier": "sle-module-public-cloud"
+  }
+]"""
+[[commands]]
+matches = "sappfpar SAPSYSTEMNAME SAPGLOBALHOST SAPFQDN SAPDBHOST dbs/hdb/dbname dbs/hdb/schema rdisp/msp/msserv rdisp/msserv_internal name=HDQ"
+output = """
+SAPSYSTEMNAME=HDQ
+SAPGLOBALHOST=vmhdbqas02
+SAPFQDN=
+SAPDBHOST=vmhdbqas02
+dbs/hdb/dbname=HDQ
+dbs/hdb/schema=SAPHANADB
+rdisp/msp/msserv=
+rdisp/msserv_internal=
+"""
+[[commands]]
+matches = "corosync-cmapctl -b"
+output = """
+totem.cluster_name (str) = hana_cluster_2
+nodelist.node.1.ring0_addr (str) = vmhdbqas01
+nodelist.node.1.nodeid (u32) = 1
+nodelist.node.2.ring0_addr (str) = vmhdbqas02
+nodelist.node.2.nodeid (u32) = 2"""
+[[commands]]
+matches = "/sbin/sysctl -a"
+output = """
+kernel.hostname = vmhdbqas02
+kernel.osrelease = 5.3.18-150300-default
+kernel.os_type = Linux
+kernel.sched_autogroup_enabled = 1
+kernel.threads-max = 31107
+fs.file-max = 1000000
+fs.aio-max-nr = 1048576
+vm.swappiness = 60
+vm.dirty_ratio = 20
+vm.dirty_background_ratio = 10
+vm.overcommit_memory = 0
+net.core.somaxconn = 4096
+net.ipv4.tcp_max_syn_backlog = 8192
+net.ipv4.tcp_slow_start_after_idle = 0
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.ip_local_port_range = 32768	60999
+net.ipv4.tcp_syncookies = 1
+net.ipv4.conf.all.rp_filter = 2
+kernel.shmmax = 18446744073709551615
+kernel.shmall = 18446744073709551615
+kernel.msgmax = 8192
+kernel.msgmnb = 16384
+kernel.pid_max = 32768
+kernel.random.uuid = 00000000-0000-0000-0000-000000000000
+net.ipv4.tcp_keepalive_time = 7200
+net.ipv4.tcp_keepalive_intvl = 75
+net.ipv4.tcp_keepalive_probes = 9
+sunrpc.tcp_slot_tbl_entries = 16
+sunrpc.tcp_max_slot_table_entries = 65536
+"""
+[[commands]]
+matches = "/usr/bin/df -k -P --"
+output = """
+Filesystem     1K-blocks    Used Available Use% Mounted on
+/dev/sda1       52428800 20971520  31457280  40% /
+/dev/sda2      104857600 52428800  52428800  50% /hana/data
+/dev/sda3      104857600 52428800  52428800  50% /hana/log
+nfs:/hana/shared 209715200 52428800 157286400  25% /hana/shared
+/dev/sda4       52428800 10485760  41943040  20% /usr/sap"""
+[[commands]]
+matches = "su - "
+output = """
+name:       disp+work
+kernel release       753.00.00
+compilation mode      64BIT
+patch number          1200
+features sapwebdisp
+"""
+[[commands]]
+matches = "saphostctrl -function Ping"
+output = """
+SUCCESS ( 42 usec)
+"""
+[[commands]]
+matches = "saphostctrl -function ListInstances"
+output = """
+    Inst Info: HDQ - 10 - vmhdbqas02 - 30010, patch 1234, changelist 5678"""
+[[commands]]
+matches = "sudo -l -U"
+output = """
+User hdqadm may run the following commands on this host:
+    (ALL : ALL) NOPASSWD: ALL
+"""

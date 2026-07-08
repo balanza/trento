@@ -1,41 +1,208 @@
 # Connection info that every host fixture uses to talk to the trento application.
-# In-cluster service URLs assume host-fixtures is installed in the same namespace
-# as the trento-server release named "trento".
 trento:
   serverUrl: "http://trento-web:4000"
-  # Must be injected at install time. hack/start.sh extracts the current key
-  # from the running trento-web pod via `trento eval` and passes it through
-  # as --set trento.apiKey=<value>. Left empty here so a bare `helm install`
-  # produces a visibly broken ConfigMap instead of silently using a stale token.
   apiKey: ""
   factsServiceUrl: "amqp://trento:trento@trento-rabbitmq:5672"
-
-# Single agent image shared by every host pod. Built once from Dockerfile.agent.
 agentImage: "local/agent:dev"
-
-# Scenario name. Used purely for labelling; the host list below already names
-# images and ids explicitly.
-scenario: hana-scale-out
-
-# One entry per simulated host. filesImage must already exist in the local
-# cluster (k3d image import). Built per-host from Dockerfile.filesystem
-# (SUSE BCI base, /etc and /usr under /fixture/); used as an init container
-# that copies its /fixture/ tree into a shared emptyDir which the agent
-# container then overlays onto its own root.
-#
-# hasSap=true on hosts that ship SAP-only files (etc/soappatrol.toml, the
-# SAP shims under usr/bin, and the usr/sap tree). Not currently consumed by
-# the chart; kept for documentation.
+scenario: all
 hosts:
-  - name: hana-s1-db1
-    filesImage: local/files:hana-scale-out-hana-s1-db1
-    agentId: a1ce50e1-7afc-43c1-8753-fd1b24b90514
+  # ── scenario-hana-diskless-sbd (recordings) ──
+  - name: vmh3shdb01
+    filesImage: local/files:scenario-hana-diskless-sbd-vmh3shdb01
+    agentId: 0f6e6491-21f2-495e-9f2d-bc50b872efaf
     hasSap: true
-  - name: hana-s2-db1
-    filesImage: local/files:hana-scale-out-hana-s2-db1
-    agentId: b2df61f2-8b0d-54d2-9864-fe2c35ca1625
+  - name: vmh3shdb02
+    filesImage: local/files:scenario-hana-diskless-sbd-vmh3shdb02
+    agentId: 5f2632a9-7b18-4c37-955a-fe16cadaaef4
     hasSap: true
-  - name: hana-s-mm
-    filesImage: local/files:hana-scale-out-hana-s-mm
-    agentId: c3e072f3-9c1e-65e3-a975-ff3d46db2736
-    hasSap: false
+  - name: vmh3shdb03
+    filesImage: local/files:scenario-hana-diskless-sbd-vmh3shdb03
+    agentId: 43dcb497-2652-4254-b53a-3ff1d3b2a0ff
+    hasSap: true
+  # ── scenario-hana-scale-out (recordings) ──
+  - name: vms4prdhdb01
+    filesImage: local/files:scenario-hana-scale-out-vms4prdhdb01
+    agentId: f3463fd1-004a-4214-afd4-b15160b0d521
+    hasSap: true
+  - name: vms4prdhdb03
+    filesImage: local/files:scenario-hana-scale-out-vms4prdhdb03
+    agentId: 16bd3ed1-923d-46ff-b6d0-9bfed42e387b
+    hasSap: true
+  - name: vms4prdhdb04
+    filesImage: local/files:scenario-hana-scale-out-vms4prdhdb04
+    agentId: 12ab9a68-c047-4eda-81c8-1e24578d9973
+    hasSap: true
+  - name: vms4prdiscsi
+    filesImage: local/files:scenario-hana-scale-out-vms4prdiscsi
+    agentId: 1109be4b-54fb-4796-b073-f4cc04d2ca55
+    hasSap: true
+  - name: vms4prdmm
+    filesImage: local/files:scenario-hana-scale-out-vms4prdmm
+    agentId: 28edd956-2155-487e-a4eb-f3d4cf7c9543
+    hasSap: true
+  # ── scenario-hana-scale-up-angi (recordings) ──
+  - name: vmangi01
+    filesImage: local/files:scenario-hana-scale-up-angi-vmangi01
+    agentId: 851a4dd3-9693-44c3-a40b-b32d22872e74
+    hasSap: true
+  - name: vmangi02
+    filesImage: local/files:scenario-hana-scale-up-angi-vmangi02
+    agentId: 4b67842f-ccf7-46a4-a344-9e918648b117
+    hasSap: true
+  # ── scenario-hana-scale-up-cost-opt (recordings) ──
+  - name: vmhdbcost01
+    filesImage: local/files:scenario-hana-scale-up-cost-opt-vmhdbcost01
+    agentId: fa7a5602-232b-5389-96a6-f5f5de6ff9a2
+    hasSap: true
+  - name: vmhdbcost02
+    filesImage: local/files:scenario-hana-scale-up-cost-opt-vmhdbcost02
+    agentId: 2372b24f-3d7a-5d01-9b1a-a2c4c95c53d4
+    hasSap: true
+  # ── scenario-hana-scale-up-multi-tier (recordings) ──
+  - name: hana1
+    filesImage: local/files:scenario-hana-scale-up-multi-tier-hana1
+    agentId: 2b64f956-a49c-4652-ae03-3c24b570eb17
+    hasSap: true
+  - name: hana2
+    filesImage: local/files:scenario-hana-scale-up-multi-tier-hana2
+    agentId: 219bf05b-c6a7-4de3-bcf8-852b42fc6a4f
+    hasSap: true
+  - name: hana3
+    filesImage: local/files:scenario-hana-scale-up-multi-tier-hana3
+    agentId: 42f15836-de3e-4bda-936f-1af85f683c08
+    hasSap: true
+  # ── scenario-healthy-27-node-SAP-cluster (recordings) ──
+  - name: vmdrbddev01
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmdrbddev01
+    agentId: 240f96b1-8d26-53b7-9e99-ffb0f2e735bf
+    hasSap: true
+  - name: vmdrbddev02
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmdrbddev02
+    agentId: 21de186a-e38f-5804-b643-7f4ef22fecfd
+    hasSap: true
+  - name: vmdrbdprd01
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmdrbdprd01
+    agentId: a09d9cf3-46c1-505c-8fb8-4b0a71a9114e
+    hasSap: true
+  - name: vmdrbdprd02
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmdrbdprd02
+    agentId: 927901fa-2c87-524e-b18c-3ef5187f504f
+    hasSap: true
+  - name: vmdrbdqas01
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmdrbdqas01
+    agentId: ddcb7992-2ffb-5c10-8b39-80685f6eaaba
+    hasSap: true
+  - name: vmdrbdqas02
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmdrbdqas02
+    agentId: 422686d6-b2d1-5092-93e8-a744854f5085
+    hasSap: true
+  - name: vmhdbdev01
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmhdbdev01
+    agentId: 13e8c25c-3180-5a9a-95c8-51ec38e50cfc
+    hasSap: true
+  - name: vmhdbdev02
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmhdbdev02
+    agentId: 0a055c90-4cb6-54ce-ac9c-ae3fedaf40d4
+    hasSap: true
+  - name: vmhdbprd01
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmhdbprd01
+    agentId: 9cd46919-5f19-59aa-993e-cf3736c71053
+    hasSap: true
+  - name: vmhdbprd02
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmhdbprd02
+    agentId: b767b3e9-e802-587e-a442-541d093b86b9
+    hasSap: true
+  - name: vmhdbqas01
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmhdbqas01
+    agentId: 99cf8a3a-48d6-57a4-b302-6e4482227ab6
+    hasSap: true
+  - name: vmhdbqas02
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmhdbqas02
+    agentId: e0c182db-32ff-55c6-a9eb-2b82dd21bc8b
+    hasSap: true
+  - name: vmiscsi01-69f4dcbb
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmiscsi01-69f4dcbb
+    agentId: 69f4dcbb-efa2-5a16-8bc8-01df7dbb7384
+    hasSap: true
+  - name: vmiscsi01-9a26b6d0
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmiscsi01-9a26b6d0
+    agentId: 9a26b6d0-6e72-597c-9fe5-152a6875f214
+    hasSap: true
+  - name: vmiscsi01-f0c808b3
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmiscsi01-f0c808b3
+    agentId: f0c808b3-d869-5192-a944-20f66a6a8449
+    hasSap: true
+  - name: vmnwdev01
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmnwdev01
+    agentId: 7269ee51-5007-5849-aaa7-7c4a98b0c9ce
+    hasSap: true
+  - name: vmnwdev02
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmnwdev02
+    agentId: fb2c6b8a-9915-5969-a6b7-8b5a42de1971
+    hasSap: true
+  - name: vmnwdev03
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmnwdev03
+    agentId: 9a3ec76a-dd4f-5013-9cf0-5eb4cf89898f
+    hasSap: true
+  - name: vmnwdev04
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmnwdev04
+    agentId: 1b0e9297-97dd-55d6-9874-8efde4d84c90
+    hasSap: true
+  - name: vmnwprd01
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmnwprd01
+    agentId: 116d49bd-85e1-5e59-b820-83f66db8800c
+    hasSap: true
+  - name: vmnwprd02
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmnwprd02
+    agentId: 4b30a6af-4b52-5bda-bccb-f2248a12c992
+    hasSap: true
+  - name: vmnwprd03
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmnwprd03
+    agentId: a3297d85-5e8b-5ac5-b8a3-55eebc2b8d12
+    hasSap: true
+  - name: vmnwprd04
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmnwprd04
+    agentId: 0fc07435-7ee2-54ca-b0de-fb27ffdc5deb
+    hasSap: true
+  - name: vmnwqas01
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmnwqas01
+    agentId: 25677e37-fd33-5005-896c-9275b1284534
+    hasSap: true
+  - name: vmnwqas02
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmnwqas02
+    agentId: 3711ea88-9ccc-5b07-8f9d-042be449d72b
+    hasSap: true
+  - name: vmnwqas03
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmnwqas03
+    agentId: 098fc159-3ed6-58e7-91be-38fda8a833ea
+    hasSap: true
+  - name: vmnwqas04
+    filesImage: local/files:scenario-healthy-27-node-SAP-cluster-vmnwqas04
+    agentId: 81e9b629-c1e7-538f-bff1-47d3a6580522
+    hasSap: true
+  # ── scenario-multi-tenant (recordings) ──
+  - name: hanadb1
+    filesImage: local/files:scenario-multi-tenant-hanadb1
+    agentId: f7a8969b-db9e-4162-b82a-d5cfafe1c4e9
+    hasSap: true
+  - name: hanadb2
+    filesImage: local/files:scenario-multi-tenant-hanadb2
+    agentId: e0564d66-be9e-4763-9917-655af1bb4b58
+    hasSap: true
+  - name: hanadb3
+    filesImage: local/files:scenario-multi-tenant-hanadb3
+    agentId: 544cbc99-c856-4b0a-88cf-e6b8db4606f6
+    hasSap: true
+  - name: vmnwhso01
+    filesImage: local/files:scenario-multi-tenant-vmnwhso01
+    agentId: c0ecf7d1-bdd3-4c29-b768-cfb97efcc585
+    hasSap: true
+  - name: vmnwhso02
+    filesImage: local/files:scenario-multi-tenant-vmnwhso02
+    agentId: edf755fd-abc7-4883-af81-8b06d836db37
+    hasSap: true
+  # ── scenario-sap-system-java (recordings) ──
+  - name: vmnwjava01
+    filesImage: local/files:scenario-sap-system-java-vmnwjava01
+    agentId: a18a203d-4f2f-4d21-b9a5-e300a9c5eeee
+    hasSap: true

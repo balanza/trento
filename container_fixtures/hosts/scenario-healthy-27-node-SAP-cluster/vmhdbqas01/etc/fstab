@@ -1,0 +1,7 @@
+# generated from recording
+
+/dev/sda1  /              ext4  defaults              0 0
+/dev/sda2  /hana/data      xfs   defaults              0 0
+/dev/sda3  /hana/log       xfs   defaults              0 0
+nfs:/hana/shared /hana/shared  nfs   defaults,rw,hard     0 0
+/dev/sda4  /usr/sap        xfs   defaults              0 0

@@ -1,0 +1,8 @@
+127.0.0.1 localhost
+::1 localhost ip6-localhost ip6-loopback
+
+127.0.1.1 vms4prdhdb04
+10.0.0.1 vms4prdhdb01
+10.0.0.2 vms4prdhdb02
+10.0.0.3 vms4prdhdb03
+10.0.0.5 vms4prdmm

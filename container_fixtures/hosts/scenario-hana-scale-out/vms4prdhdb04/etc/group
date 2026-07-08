@@ -1,0 +1,9 @@
+root:x:0:
+daemon:x:2:
+bin:x:3:
+sys:x:3:
+tty:x:5:
+disk:x:6:
+h4p:x:401:x:79:
+dba:x:99:
+sapsys:x:1001:

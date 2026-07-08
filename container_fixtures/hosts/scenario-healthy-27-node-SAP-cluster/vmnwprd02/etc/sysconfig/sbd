@@ -1,0 +1,12 @@
+# Generated from recording
+
+SBD_DELAY_START="yes"
+SBD_DEVICE="/dev/disk/by-id/scsi-SLIO-ORG_IBLOCK_e34218cd-0d9a-4b21-b6d5-a313980baa82"
+SBD_MOVE_TO_ROOT_CGROUP="auto"
+SBD_OPTS=""
+SBD_PACEMAKER="yes"
+SBD_STARTMODE="always"
+SBD_SYNC_RESOURCE_STARTUP="no"
+SBD_TIMEOUT_ACTION="flush,reboot"
+SBD_WATCHDOG_DEV="/dev/watchdog"
+SBD_WATCHDOG_TIMEOUT="5"

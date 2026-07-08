@@ -1,0 +1,44 @@
+## Type: string
+## Default: ""
+#
+# Diskless SBD: no SBD_DEVICE configured. The agent's NewSBD() will return
+# `Devices: nil` while still parsing the rest of this file into Config.
+#
+#SBD_DEVICE=""
+
+## Type: yesno
+## Default: yes
+SBD_PACEMAKER=yes
+
+## Type: always / clean
+## Default: always
+SBD_STARTMODE=always
+
+## Type: yesno / integer
+## Default: no
+SBD_DELAY_START=216
+
+## Type: string
+## Default: /dev/watchdog
+SBD_WATCHDOG_DEV=/dev/watchdog
+
+## Type: integer
+## Default: 5
+SBD_WATCHDOG_TIMEOUT=60
+
+## Type: string
+## Default: "flush,reboot"
+SBD_TIMEOUT_ACTION=flush,reboot
+
+## Type: yesno / auto
+## Default: auto
+SBD_MOVE_TO_ROOT_CGROUP=auto
+
+## Type: yesno
+## Default: no
+SBD_SYNC_RESOURCE_STARTUP=yes
+
+## Type: string
+## Default: ""
+SBD_OPTS=
+

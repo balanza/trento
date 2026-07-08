@@ -1,0 +1,5 @@
+127.0.0.1 localhost
+::1 localhost ip6-localhost ip6-loopback
+
+127.0.1.1 vmdrbdqas01
+10.0.0.2 vmdrbdqas02

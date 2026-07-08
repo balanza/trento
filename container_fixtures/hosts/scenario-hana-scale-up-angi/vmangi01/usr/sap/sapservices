@@ -1,0 +1,1 @@
+/usr/sap/HN9/SYS/exe/run/sapstartsrv pf=/usr/sap/HN9/HDB09/profile/HN9_HDB096 lifecycle_mgr

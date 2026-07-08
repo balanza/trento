@@ -1,0 +1,1 @@
+/usr/sap/HDP/SYS/exe/run/sapstartsrv pf=/usr/sap/HDP/HDB10/profile/HDP_HDB106 lifecycle_mgr

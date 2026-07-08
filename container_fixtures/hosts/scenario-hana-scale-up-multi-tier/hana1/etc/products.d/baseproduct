@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<products xmlns="http://www.suse.com/2001/04/products.dtd">
+  <baseproduct vendor="SUSE" name="SLES_SAP" version="15-SP5" release="0" arch="x86_64">
+  </baseproduct>
+</products>
