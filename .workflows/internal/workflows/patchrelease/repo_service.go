@@ -12,7 +12,8 @@ const RepoServiceName = "trento.patch-release.repo"
 
 // RepoInput is the wire-shape of one Process invocation.
 type RepoInput struct {
-	Repo string `json:"repo"` // owner/name
+	Repo  string `json:"repo"`  // owner/name
+	Agent string `json:"agent"` // "claude" (default) or "pi"
 }
 
 // RegisterRepoService returns the Restate service definition. The
@@ -31,5 +32,5 @@ func RegisterRepoService() restate.ServiceDefinition {
 // processing other repos. A non-nil error here would propagate to the
 // caller's RequestFuture and we'd lose the partial report.
 func Process(ctx restate.Context, in RepoInput) (RepoReport, error) {
-	return processRepo(ctx, in.Repo), nil
+	return processRepo(ctx, in.Repo, in.Agent), nil
 }

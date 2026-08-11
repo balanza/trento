@@ -42,7 +42,11 @@ func Invoke(ctx context.Context, req Request) (Response, error) {
 	// long log bundles — the analyze-logs prompt can run into the
 	// 2 MiB ARG_MAX on a single PR with many failed jobs. claude
 	// accepts the prompt from stdin when no positional arg is given.
-	args := []string{"claude"}
+	// Run via `env -u ANTHROPIC_API_KEY` so a stray/exhausted API key in
+	// the ambient environment can't shadow the host's working claude.ai
+	// login — claude prefers ANTHROPIC_API_KEY when present, and a bad
+	// key there fails hard instead of falling back.
+	args := []string{"env", "-u", "ANTHROPIC_API_KEY", "claude"}
 	if len(req.AllowedTools) > 0 {
 		args = append(args, "--allowedTools", strings.Join(req.AllowedTools, ","))
 	}

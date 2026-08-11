@@ -13,16 +13,13 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
-
 	restate "github.com/restatedev/sdk-go"
 
-	"github.com/trento-project/trento-workflows/internal/activities/claude"
+	"github.com/trento-project/trento-workflows/internal/activities/codingagent"
 	"github.com/trento-project/trento-workflows/internal/activities/fs"
 	"github.com/trento-project/trento-workflows/internal/activities/gh"
 	"github.com/trento-project/trento-workflows/internal/activities/git"
 	"github.com/trento-project/trento-workflows/internal/workflows/common/release"
-	"github.com/trento-project/trento-workflows/internal/workflows/fixprci"
 )
 
 // WorkflowName is the Restate service identifier.
@@ -81,7 +78,7 @@ func Run(ctx restate.WorkflowContext, in Input) (Output, error) {
 		client := restate.Service[RepoReport](ctx, RepoServiceName, "Process")
 		futures = append(futures, pending{
 			repo: repo,
-			fut:  client.RequestFuture(RepoInput{Repo: repo}),
+			fut:  client.RequestFuture(RepoInput{Repo: repo, Agent: in.Agent}),
 		})
 	}
 
@@ -109,7 +106,7 @@ func Run(ctx restate.WorkflowContext, in Input) (Output, error) {
 // processRepo runs the per-repo patch-release flow. Errors are recorded
 // in the report rather than aborting the workflow — one bad repo should
 // not stop the others.
-func processRepo(ctx restate.Context, repo string) RepoReport {
+func processRepo(ctx restate.Context, repo, agent string) RepoReport {
 	report := RepoReport{
 		Repo: repo, Skipped: false, CurrentVersion: "", NextVersion: "",
 		Backports: nil, VersionBumpPR: "", Failed: nil,
@@ -135,10 +132,11 @@ func processRepo(ctx restate.Context, repo string) RepoReport {
 
 	workDir, ok := prepareClone(ctx, repo)
 	if !ok {
+		report.Failed = append(report.Failed, fmt.Sprintf("%s: clone/prepare failed (see handler log)", repo))
 		return report
 	}
 
-	backportedNums := backportAllPRs(ctx, repo, workDir, next, prs, &report)
+	backportedNums := backportAllPRs(ctx, repo, workDir, next, prs, &report, agent)
 	report.VersionBumpPR = createVersionBumpPR(ctx, repo, workDir, next, backportedNums)
 	return report
 }
@@ -199,10 +197,11 @@ func backportAllPRs(
 	repo, workDir, next string,
 	prs []gh.PR,
 	report *RepoReport,
+	agent string,
 ) []int {
 	var nums []int
 	for _, pr := range prs {
-		url, ok := backportOnePR(ctx, repo, pr, workDir, next, report)
+		url, ok := backportOnePR(ctx, repo, pr, workDir, next, report, agent)
 		if !ok || url == "" {
 			continue
 		}
@@ -225,6 +224,7 @@ func backportOnePR(
 	pr gh.PR,
 	workDir, next string,
 	report *RepoReport,
+	agent string,
 ) (string, bool) {
 	branch := fmt.Sprintf("backport-pr-%d-to-release", pr.Number)
 	prTag := fmt.Sprintf("%s:%d", repo, pr.Number)
@@ -237,7 +237,7 @@ func backportOnePR(
 	}); err != nil {
 		return "", false
 	}
-	if !pickAndMaybeResolve(ctx, repo, pr, workDir, branch, prTag, report) {
+	if !pickAndMaybeResolve(ctx, repo, pr, workDir, branch, prTag, report, agent) {
 		return "", false
 	}
 	if err := runV(ctx, "push:"+prTag, func(rctx restate.RunContext) error {
@@ -246,42 +246,11 @@ func backportOnePR(
 		return "", false
 	}
 	url := findOrCreateBackportPR(ctx, repo, pr, branch, next, prTag)
-	if num, ok := parsePRNumberFromURL(url); ok {
-		spawnFixPRCI(ctx, repo, num)
-	}
 	detach(ctx, workDir, prTag)
 	return url, true
 }
 
-// spawnFixPRCIDelay is how long Restate waits before actually starting
-// the fix-pr-ci workflow for a newly-opened backport PR. The delay
-// gives GitHub Actions time to schedule the PR's CI runs — querying
-// too eagerly would see zero runs and conclude "green" prematurely.
-const spawnFixPRCIDelay = time.Minute
 
-// spawnFixPRCI fires the trento.fix-pr-ci workflow on (repo, prNumber)
-// as a detached, delay-scheduled invocation. The patch-release workflow
-// does NOT wait for fix-pr-ci to complete — it may run for hours,
-// fixing CI on the new backport PR independently. Each PR gets its own
-// virtual-object key, so fix-pr-ci runs for different backports proceed
-// in parallel.
-//
-// Restate's `WithDelay` queues the invocation server-side, so this
-// returns immediately and patch-release continues to the next backport
-// without blocking on the 1-minute warmup.
-//
-// Returns nothing: spawning is best-effort. The backport PR being
-// opened is the primary deliverable; if Restate rejects the send
-// (e.g. duplicate key already in flight), the user can re-run
-// fix-pr-ci manually with the same inputs.
-func spawnFixPRCI(ctx restate.Context, repo string, prNumber int) {
-	key := fmt.Sprintf("%s#%d", repo, prNumber)
-	_ = restate.WorkflowSend(ctx, fixprci.WorkflowName, key, "Run").
-		Send(
-			fixprci.Input{Repo: repo, PRNumber: prNumber},
-			restate.WithDelay(spawnFixPRCIDelay),
-		)
-}
 
 // alreadyBackported returns (url, true) if there is already a MERGED PR
 // on the backport branch.
@@ -318,6 +287,7 @@ func pickAndMaybeResolve(
 	repo string, pr gh.PR,
 	workDir, branch, prTag string,
 	report *RepoReport,
+	agent string,
 ) bool {
 	result, pickErr := release.RunT(ctx, "cherryPick:"+prTag, func(rctx restate.RunContext) (pickResult, error) {
 		cherryErr := git.CherryPick(rctx, workDir, pr.MergeCommitOID)
@@ -334,7 +304,7 @@ func pickAndMaybeResolve(
 	case pickClean:
 		return true
 	case pickConflict:
-		if resolveConflictWithAI(ctx, repo, pr, workDir, branch) {
+		if resolveConflictWithAI(ctx, repo, pr, workDir, branch, agent) {
 			return true
 		}
 		abortFailedPick(ctx, workDir, prTag)
@@ -398,13 +368,16 @@ func findOrCreateBackportPR(
 // cherry-pick (i.e. .git/CHERRY_PICK_HEAD no longer exists).
 func resolveConflictWithAI(
 	ctx restate.Context,
-	repo string, pr gh.PR, workDir, branch string,
+	repo string, pr gh.PR, workDir, branch, agent string,
 ) bool {
+	client, err := codingagent.ParseClient(agent)
+	if err != nil {
+		return false
+	}
 	tag := fmt.Sprintf("%s:%d", repo, pr.Number)
-	if _, err := release.RunT(ctx, "claude:resolve:"+tag, func(rctx restate.RunContext) (claude.Response, error) {
-		return claude.Invoke(rctx, claude.Request{
+	if _, err := release.RunT(ctx, "agent:resolve:"+tag, func(rctx restate.RunContext) (codingagent.Response, error) {
+		return codingagent.Invoke(rctx, client, codingagent.Request{
 			Prompt:       buildResolveConflictPrompt(repo, pr, branch),
-			Files:        nil,
 			AllowedTools: []string{"Bash", "Read", "Edit", "Write"},
 			Cwd:          workDir,
 		})

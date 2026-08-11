@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -155,10 +156,18 @@ func LabelEnsure(ctx context.Context, repo, name, color, desc string) error {
 	return nil
 }
 
-// RepoClone runs `gh repo clone <repo> <dir> -- --quiet`. Uses the
-// user's gh auth for private repos.
+// RepoClone runs `gh repo clone <repo> <dir> -- --quiet --filter=blob:none`.
+// Uses the user's gh auth for private repos. Removes `dir` first: a retry
+// after a clone gets killed mid-transfer (e.g. Restate's abort timeout on
+// a large repo) would otherwise find a partial, non-empty directory and
+// fail every subsequent attempt. blob:none keeps full commit/tree history
+// for cherry-pick while deferring blob downloads, which is what keeps a
+// clone of a large, long-lived repo inside the per-attempt time budget.
 func RepoClone(ctx context.Context, repo, dir string) error {
-	if _, err := lib.MustSh(ctx, "", "gh", "repo", "clone", repo, dir, "--", "--quiet"); err != nil {
+	if err := os.RemoveAll(dir); err != nil {
+		return fmt.Errorf("gh.RepoClone %s: removing stale %s: %w", repo, dir, err)
+	}
+	if _, err := lib.MustSh(ctx, "", "gh", "repo", "clone", repo, dir, "--", "--quiet", "--filter=blob:none"); err != nil {
 		return fmt.Errorf("gh.RepoClone %s: %w", repo, err)
 	}
 	return nil
@@ -527,6 +536,31 @@ func MilestoneEnsure(ctx context.Context, repo, title string) (int64, error) {
 		}
 	}
 	return 0, fmt.Errorf("gh.MilestoneEnsure %s/%q: not found after create", repo, title)
+}
+
+// PRFiles returns the list of file paths changed by a pull request.
+// Wraps `gh api repos/<repo>/pulls/<num>/files?per_page=300` and
+// extracts only the filename field from each entry.
+func PRFiles(ctx context.Context, repo string, prNumber int) ([]string, error) {
+	path := fmt.Sprintf("repos/%s/pulls/%d/files?per_page=300", repo, prNumber)
+	out, err := lib.MustSh(ctx, "", "gh", "api", path)
+	if err != nil {
+		return nil, fmt.Errorf("gh.PRFiles %s/%d: %w", repo, prNumber, err)
+	}
+	if strings.TrimSpace(out) == "" || strings.TrimSpace(out) == "[]" {
+		return nil, nil
+	}
+	var raws []struct {
+		Filename string `json:"filename"`
+	}
+	if err := json.Unmarshal([]byte(out), &raws); err != nil {
+		return nil, fmt.Errorf("gh.PRFiles %s/%d parse: %w", repo, prNumber, err)
+	}
+	files := make([]string, 0, len(raws))
+	for _, r := range raws {
+		files = append(files, r.Filename)
+	}
+	return files, nil
 }
 
 func listMilestones(ctx context.Context, repo string) ([]Milestone, error) {

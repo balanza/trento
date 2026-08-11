@@ -5,6 +5,8 @@ type Input struct {
 	// Submodules names (e.g. "web", "wanda") to limit processing to.
 	// Empty = every submodule declared in the super-repo's .gitmodules.
 	Submodules []string `json:"submodules,omitempty"`
+	// Agent selects the coding agent backend. "claude" (default) or "pi".
+	Agent string `json:"agent,omitempty"`
 }
 
 // Output is the aggregated result of one patch-release run.
@@ -26,6 +28,8 @@ type RepoReport struct {
 }
 
 func applyDefaults(in Input) Input {
-	// No defaults today; empty Submodules means "all".
+	if in.Agent == "" {
+		in.Agent = "claude"
+	}
 	return in
 }

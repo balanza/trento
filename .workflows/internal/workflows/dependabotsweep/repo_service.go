@@ -2,6 +2,7 @@ package dependabotsweep
 
 import (
 	"fmt"
+	"strings"
 
 	restate "github.com/restatedev/sdk-go"
 
@@ -71,8 +72,26 @@ func processRepo(ctx restate.Context, in RepoInput) RepoReport {
 		report.Errors = append(report.Errors, fmt.Sprintf("milestone ensure: %s", err.Error()))
 	}
 
+	// Phase 1 — submit milestones + fix-pr-ci for every PR.
+	// Send is non-blocking: after this loop, all fix-pr-ci
+	// workflows are executing concurrently (each keyed on a
+	// different repo+PR, so Restate runs them in parallel).
+	type prWork struct {
+		pr       gh.PR
+		attached restate.AttachFuture[fixprci.Output]
+	}
+	works := make([]prWork, 0, len(prs))
 	for _, pr := range prs {
-		outcome := processPR(ctx, in, pr, next)
+		attached := submitPR(ctx, in, pr, next)
+		works = append(works, prWork{pr, attached})
+	}
+
+	// Phase 2 — collect results and merge/skip. Response() blocks
+	// on each PR's fix-pr-ci, but since all were submitted in Phase 1,
+	// the total wall time is bounded by the slowest workflow, not the
+	// sum.
+	for _, w := range works {
+		outcome := collectPR(ctx, in, w.pr, next, w.attached)
 		report.PRs = append(report.PRs, outcome)
 	}
 	return report
@@ -90,10 +109,33 @@ func listDependabotPRs(ctx restate.Context, repo string) ([]gh.PR, error) {
 	})
 }
 
-// processPR is the per-PR sweep loop. The exact ordering matches the
-// spec's pseudocode: milestone first (so a crash mid-run still leaves
-// the PR labelled), then fix-pr-ci, then merge-or-skip.
-func processPR(ctx restate.Context, in RepoInput, pr gh.PR, next string) PROutcome {
+// submitPR attaches the milestone and submits fix-pr-ci (non-blocking).
+// Returns an AttachFuture that the caller awaits later.
+func submitPR(ctx restate.Context, in RepoInput, pr gh.PR, next string) restate.AttachFuture[fixprci.Output] {
+	// 1. Attach the milestone up front, but only if the PR includes at
+	//    least one file outside /test and /.github (i.e. it touches
+	//    code that actually participates in the release bundle).
+	if !in.DryRun && hasNonBundleChanges(ctx, in.Repo, pr) {
+		_ = runV(ctx, fmt.Sprintf("milestone:%s:%d", in.Repo, pr.Number), func(rctx restate.RunContext) error {
+			return gh.PRSetMilestone(rctx, in.Repo, pr.Number, next)
+		})
+	}
+
+	// 2. Submit fix-pr-ci (non-blocking Send). The workflow starts
+	//    executing immediately; we'll attach and await its result in
+	//    collectPR.
+	key := fmt.Sprintf("%s#%d", in.Repo, pr.Number)
+	input := fixprci.Input{
+		Repo:          in.Repo,
+		PRNumber:      pr.Number,
+		MaxIterations: in.MaxIterationsPerPR,
+	}
+	inv := restate.WorkflowSend(ctx, fixprci.WorkflowName, key, "Run").Send(input)
+	return restate.AttachInvocation[fixprci.Output](ctx, inv.GetInvocationId())
+}
+
+// collectPR awaits the fix-pr-ci result and applies merge-or-skip.
+func collectPR(ctx restate.Context, in RepoInput, pr gh.PR, next string, attached restate.AttachFuture[fixprci.Output]) PROutcome {
 	outcome := PROutcome{
 		Number:    pr.Number,
 		URL:       pr.URL,
@@ -101,27 +143,7 @@ func processPR(ctx restate.Context, in RepoInput, pr gh.PR, next string) PROutco
 		Milestone: next,
 	}
 
-	// 1. Attach the milestone up front, regardless of CI state. Doing
-	//    it before merging means a mid-run crash still leaves the PR
-	//    labelled for the correct release.
-	if !in.DryRun {
-		_ = runV(ctx, fmt.Sprintf("milestone:%s:%d", in.Repo, pr.Number), func(rctx restate.RunContext) error {
-			return gh.PRSetMilestone(rctx, in.Repo, pr.Number, next)
-		})
-	}
-
-	// 2. Delegate to fix-pr-ci. It handles the "green fast-path"
-	//    itself: if all CI runs are already terminal-success, it
-	//    returns FinalStatusGreen after one iteration without ever
-	//    asking Claude. So the sweep always dispatches unconditionally
-	//    and trusts fix-pr-ci to short-circuit.
-	key := fmt.Sprintf("%s#%d", in.Repo, pr.Number)
-	fix := restate.Workflow[fixprci.Output](ctx, fixprci.WorkflowName, key, "Run")
-	result, err := fix.Request(fixprci.Input{
-		Repo:          in.Repo,
-		PRNumber:      pr.Number,
-		MaxIterations: in.MaxIterationsPerPR,
-	})
+	result, err := attached.Response()
 	if err != nil {
 		outcome.State = PRStateFailedInternal
 		outcome.Note = fmt.Sprintf("fix-pr-ci call failed: %s", err.Error())
@@ -141,7 +163,6 @@ func processPR(ctx restate.Context, in RepoInput, pr gh.PR, next string) PROutco
 			outcome.Note = mergeNote
 		}
 		if !merged {
-			// State was set inside tryMergeWithApproval.
 			return outcome
 		}
 		if len(result.Commits) == 0 {
@@ -301,6 +322,27 @@ func classifyPostApprovalNote(state string) string {
 	default:
 		return fmt.Sprintf("approval applied but mergeable_state=%q", state)
 	}
+}
+
+// hasNonBundleChanges returns true if the PR modifies at least one file
+// outside the /test and /.github directories — i.e. it touches code that
+// participates in the release bundle. Dependabot PRs that only touch
+// test fixtures or workflow configs are ignored for milestone purposes.
+func hasNonBundleChanges(ctx restate.Context, repo string, pr gh.PR) bool {
+	files, err := runT(ctx, fmt.Sprintf("prFiles:%s:%d", repo, pr.Number), func(rctx restate.RunContext) ([]string, error) {
+		return gh.PRFiles(rctx, repo, pr.Number)
+	})
+	if err != nil || len(files) == 0 {
+		// If we can't fetch files (or there are none), err on the side
+		// of caution and assume the PR matters — attach the milestone.
+		return true
+	}
+	for _, f := range files {
+		if !strings.HasPrefix(f, "test/") && !strings.HasPrefix(f, ".github/") {
+			return true
+		}
+	}
+	return false
 }
 
 func doMerge(ctx restate.Context, repo string, prNumber int) bool {

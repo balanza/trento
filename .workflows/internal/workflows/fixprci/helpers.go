@@ -249,9 +249,9 @@ func excerptForIssue(entries []logEntry, iss issue, maxLines int) string {
 // cap is hit before convergence; the caller maps that to aborted.
 func waitForRuns(ctx restate.Context, repo, sha string) ([]gh.WorkflowRun, error) {
 	const (
-		fastInterval = 10 * time.Second
+		fastInterval = 30 * time.Second
 		fastAttempts = 12 // 2 minutes
-		slowInterval = 60 * time.Second
+		slowInterval = 300 * time.Second
 		slowAttempts = 58 // ~58 minutes; total cap ~60 min
 	)
 

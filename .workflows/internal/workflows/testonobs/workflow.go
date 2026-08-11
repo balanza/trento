@@ -615,6 +615,16 @@ func publishOne(
 		return nil, err
 	}
 
+	// Web needs a _service file declaring the node_modules cpio and the
+	// package-lock.json that the obs-service-node_modules binary consumed.
+	if sm == SMWeb {
+		if err := runV(ctx, "stageWebAux:"+sm, func(_ restate.RunContext) error {
+			return stageWebAux(repoRoot, staging, rpmPkg)
+		}); err != nil {
+			return nil, err
+		}
+	}
+
 	if err := pushPackage(ctx, project, rpmPkg, staging, superSha); err != nil {
 		return nil, err
 	}
@@ -634,6 +644,34 @@ func publishOne(
 		})
 	}
 	return results, nil
+}
+
+// stageWebAux copies package-lock.json and writes the _service file
+// into the web RPM package staging dir. The _service declares the
+// node_modules cpio so OBS handles extraction the same way it does for
+// the SCM-synced factory package.
+func stageWebAux(repoRoot, staging, pkg string) error {
+	// Copy assets/package-lock.json from the submodule into staging.
+	src := repoRoot + "/" + SMWeb + "/assets/package-lock.json"
+	if _, err := os.Stat(src); err != nil {
+		return fmt.Errorf("stageWebAux: package-lock.json not found at %s: %w", src, err)
+	}
+	if err := copyFile(src, staging+"/package-lock.json"); err != nil {
+		return fmt.Errorf("stageWebAux copy package-lock.json: %w", err)
+	}
+	// Write _service XML referencing the cpio produced by bundleWebDeps.
+	svc := fmt.Sprintf(`<services>
+  <service name="node_modules" mode="manual">
+    <param name="cpio">node_modules.obscpio</param>
+    <param name="output">node_modules.spec.inc</param>
+    <param name="source-offset">10000</param>
+  </service>
+</services>
+`)
+	if err := os.WriteFile(staging+"/_service", []byte(svc), 0o644); err != nil { //nolint:gosec // non-secret build config
+		return fmt.Errorf("stageWebAux write _service: %w", err)
+	}
+	return nil
 }
 
 // stageImagePackage copies the submodule's Dockerfile (and optional
@@ -851,11 +889,7 @@ func synthVersion(rctx restate.RunContext, repoRoot, sm, superSha string) (strin
 // bundleDeps dispatches on the submodule to bundle its language-specific
 // dependency closure inside the CD container, producing the auxiliary
 // archives the spec file expects (vendor.tar.gz for Go, deps.tar.gz for
-// Elixir, etc.).
-//
-// Implemented today: agent + mcp-server (`go mod vendor`) and checks
-// (no-op). web (mix + npm) and wanda (mix + cargo) are still TODO —
-// invoke them and you'll get a typed error rather than a silent stub.
+// Elixir, node_modules.obscpio for web, etc.).
 func bundleDeps(rctx restate.RunContext, sm, staging, version string) error {
 	pkg := rpmPackageName(sm)
 	srcDir := pkg + "-" + version
@@ -885,10 +919,97 @@ rm -rf %s
 			return fmt.Errorf("bundleDeps %s exit %d: %s", sm, res.ExitCode, res.Stdout)
 		}
 		return nil
-	case SMWeb, SMWanda:
-		return fmt.Errorf("bundleDeps for %s is not implemented yet", sm)
+	case SMWeb:
+		return bundleWebDeps(rctx, staging, srcDir)
+	case SMWanda:
+		return bundleWandaDeps(rctx, staging, srcDir)
 	}
 	return fmt.Errorf("bundleDeps: unknown submodule %q", sm)
+}
+
+// bundleWebDeps runs inside the CD container to bundle Elixir mix deps
+// and npm node_modules for the web submodule. Produces deps.tar.gz,
+// node_modules.obscpio, and node_modules.spec.inc in the staging dir.
+func bundleWebDeps(rctx restate.RunContext, staging, srcDir string) error {
+	script := fmt.Sprintf(`set -euo pipefail
+cd /work
+rm -rf %[1]s
+tar xzf %[1]s.tar.gz
+cd %[1]s
+export MIX_HOME=/tmp/.mix MIX_REBAR3=/usr/bin/rebar3
+mix local.hex --force >/dev/null
+mix local.rebar --force >/dev/null
+mix deps.get
+tar czf /work/deps.tar.gz deps
+cd /work
+# obs-service-node_modules expects package-lock.json in CWD; copy it from
+# the extracted source tree so we don't need a host-side pre-copy step.
+cp %[1]s/assets/package-lock.json ./package-lock.json
+/usr/lib/obs/service/node_modules \
+  --input package-lock.json \
+  --output node_modules.spec.inc \
+  --cpio node_modules.obscpio \
+  --source-offset 10000 \
+  --outdir /work \
+  --download
+rm -rf %[1]s
+`, srcDir)
+	res, err := container.RunOneShot(rctx, defaultCDImage, container.RunOpts{
+		StagingDir: staging,
+		LogPath:    staging + "/.container.log",
+		Env:        nil,
+	}, script)
+	if err != nil {
+		return fmt.Errorf("bundleWebDeps: %w", err)
+	}
+	if res.ExitCode != 0 {
+		return fmt.Errorf("bundleWebDeps exit %d: %s", res.ExitCode, res.Stdout)
+	}
+	for _, f := range []string{"deps.tar.gz", "node_modules.obscpio", "node_modules.spec.inc"} {
+		if _, err := os.Stat(staging + "/" + f); err != nil {
+			return fmt.Errorf("bundleWebDeps: missing %s after container run: %w", f, err)
+		}
+	}
+	return nil
+}
+
+// bundleWandaDeps runs inside the CD container to bundle Elixir mix deps
+// and Rust vendor for the wanda submodule. Produces deps.tar.gz and
+// vendor-rhai_rustler.tar.gz in the staging dir.
+func bundleWandaDeps(rctx restate.RunContext, staging, srcDir string) error {
+	script := fmt.Sprintf(`set -euo pipefail
+cd /work
+rm -rf %[1]s
+tar xzf %[1]s.tar.gz
+cd %[1]s
+export MIX_HOME=/tmp/.mix MIX_REBAR3=/usr/bin/rebar3
+mix local.hex --force >/dev/null
+mix local.rebar --force >/dev/null
+mix deps.get
+tar czf /work/deps.tar.gz deps
+cd deps/rhai_rustler/native/rhai_rustler
+cargo vendor vendor
+tar czf /work/vendor-rhai_rustler.tar.gz vendor Cargo.lock
+cd /work
+rm -rf %[1]s
+`, srcDir)
+	res, err := container.RunOneShot(rctx, defaultCDImage, container.RunOpts{
+		StagingDir: staging,
+		LogPath:    staging + "/.container.log",
+		Env:        nil,
+	}, script)
+	if err != nil {
+		return fmt.Errorf("bundleWandaDeps: %w", err)
+	}
+	if res.ExitCode != 0 {
+		return fmt.Errorf("bundleWandaDeps exit %d: %s", res.ExitCode, res.Stdout)
+	}
+	for _, f := range []string{"deps.tar.gz", "vendor-rhai_rustler.tar.gz"} {
+		if _, err := os.Stat(staging + "/" + f); err != nil {
+			return fmt.Errorf("bundleWandaDeps: missing %s after container run: %w", f, err)
+		}
+	}
+	return nil
 }
 
 // stageSpec finds the submodule's spec file, copies it into the
@@ -903,6 +1024,12 @@ func stageSpec(_ restate.RunContext, repoRoot, sm, pkg, version string) error {
 		return fmt.Errorf("stageSpec read %s: %w", src, err)
 	}
 	patched := fs.SetSpecVersion(string(body), version)
+	// trento-web spec uses %%GTM_ID%% which OBS normally replaces via a
+	// regex_replace source service. Since we ship static tarballs, we
+	// patch it here instead.
+	if pkg == "trento-web" {
+		patched = strings.ReplaceAll(patched, "%%GTM_ID%%", "GTM-N3JHF5M6")
+	}
 	dest := stagingDir(pkg) + "/" + pkg + ".spec"
 	if err := os.MkdirAll(filepath.Dir(dest), 0o750); err != nil {
 		return fmt.Errorf("stageSpec mkdir: %w", err)
