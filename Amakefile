@@ -1,0 +1,43 @@
+[defaults]
+tool = "claude-code"
+
+[tasks.resolve-conflict]
+tool = "amake-claude"
+prompt = """
+You are inside the git repository for {{vars.repo}}.
+A cherry-pick of commit {{vars.sha}} (PR #{{vars.num}}: '{{vars.title}}') onto branch '{{vars.branch}}' has produced conflicts.
+Please:
+1. Run 'git status' to identify the conflicted files.
+2. Examine each conflict and resolve it, favouring the incoming changes unless they semantically clash with release-branch-specific code.
+3. Stage the resolved files with 'git add'.
+4. Complete the cherry-pick with 'git cherry-pick --continue --no-edit'.
+Do NOT run 'git push'.
+"""
+extra_args = ["--allowedTools", "Bash,Read,Edit,Write"]
+
+[tasks.fix-obs-build]
+tool = "amake-claude"
+prompt = """
+You are inside the git working tree of the Trento submodule '{{vars.submodule}}'
+(checked out at the super-repo path with the same name).
+
+An OBS build of package '{{vars.package}}' failed on repository '{{vars.repo}}'
+(arch '{{vars.arch}}') with status '{{vars.code}}'. The full build log lives at:
+
+    {{vars.log_file}}
+
+Your job:
+1. Read the build log. Find the actual failing step (skip noise, focus on the
+   first real error or the line that aborts the build).
+2. Investigate the relevant source files in the submodule. Use grep/find as
+   needed to locate the code or config referenced by the error.
+3. Make the minimum edit that should fix the failure. Prefer fixing the root
+   cause to silencing the symptom.
+4. Do NOT commit, push, or attempt to rerun the build. The orchestrating
+   script (hack/obs-test.sh fix) will republish and re-check after you exit.
+5. If the failure is clearly an OBS/infrastructure issue rather than a code
+   bug (network, runner, broken dependency upstream), say so and make no edits.
+
+When you are done, briefly summarize what you changed and why.
+"""
+extra_args = ["--allowedTools", "Bash,Read,Edit,Write,Grep,Glob"]

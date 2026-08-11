@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Adapter for amake's generic passthrough: receives [extra_args...] "prompt"
+# and forwards to claude as [extra_args...] -p "prompt".
+if [ $# -eq 0 ]; then
+  exec claude
+fi
+prompt="${*: -1}"
+set -- "${@:1:$#-1}"
+exec claude "$@" -p "$prompt"
